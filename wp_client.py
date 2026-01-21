@@ -156,7 +156,7 @@ class WPClient:
     
     def post_draft(self, title: str, content: str, excerpt: str = "", featured_media: int | None = None) -> int:
         """
-        下書き投稿を作成（シンプルAPI）
+        投稿を作成（本番公開）
         
         Args:
             title: 記事タイトル
@@ -171,7 +171,7 @@ class WPClient:
             title=title, 
             content=content, 
             excerpt=excerpt, 
-            status="draft", 
+            status="publish",  # 本投稿に変更
             featured_media=featured_media
         )
         return result["id"]
