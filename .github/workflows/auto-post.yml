@@ -15,6 +15,8 @@ on:
 jobs:
   post:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # これを追加：投稿済みIDを保存するためにリポジトリへの書き込みを許可
     
     steps:
       - name: Checkout repository
