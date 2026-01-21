@@ -1,0 +1,44 @@
+<style>
+    .av-card {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+        margin: 18px 0
+    }
+
+    .av-card__img {
+        flex: 0 0 42%;
+        max-width: 42%
+    }
+
+    .av-card__img img {
+        width: 100%;
+        height: auto;
+        border-radius: 10px;
+        display: block
+    }
+
+    .av-card__body {
+        flex: 1;
+        min-width: 0
+    }
+
+    @media (max-width:768px) {
+        .av-card {
+            flex-direction: column
+        }
+
+        .av-card__img {
+            max-width: 100%
+        }
+    }
+</style>
+
+<div class="av-card">
+    <div class="av-card__img">
+        <img src="{{PACKAGE_IMAGE_URL}}" alt="{{TITLE}}">
+    </div>
+    <div class="av-card__body">
+        {{AI_BODY_HTML}}
+    </div>
+</div>

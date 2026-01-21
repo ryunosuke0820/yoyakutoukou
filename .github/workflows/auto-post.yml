@@ -1,0 +1,52 @@
+name: FANZA Auto Post
+
+on:
+  # 手動実行用
+  workflow_dispatch:
+  
+  # スケジュール実行（UTC時間）
+  # 1日20記事 = 5記事×4回（6時間ごと）
+  schedule:
+    - cron: '0 0 * * *'   # UTC 0:00 = JST 9:00
+    - cron: '0 6 * * *'   # UTC 6:00 = JST 15:00
+    - cron: '0 12 * * *'  # UTC 12:00 = JST 21:00
+    - cron: '0 18 * * *'  # UTC 18:00 = JST 3:00
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Create .env file
+        run: |
+          echo "FANZA_API_KEY=${{ secrets.FANZA_API_KEY }}" >> .env
+          echo "FANZA_AFFILIATE_ID=${{ secrets.FANZA_AFFILIATE_ID }}" >> .env
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+          echo "WP_BASE_URL=${{ secrets.WP_BASE_URL }}" >> .env
+          echo "WP_USERNAME=${{ secrets.WP_USERNAME }}" >> .env
+          echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD }}" >> .env
+      
+      - name: Run FANZA Bot
+        run: python main.py --limit 5
+      
+      - name: Commit updated data files
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/
+          git diff --staged --quiet || git commit -m "Update posted IDs [skip ci]"
+          git push || echo "Nothing to push"

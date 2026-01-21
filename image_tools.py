@@ -1,0 +1,166 @@
+"""
+画像ツール - ダウンロード、処理、文字入れ（オプション）
+"""
+import logging
+import tempfile
+from pathlib import Path
+from typing import BinaryIO
+import requests
+
+logger = logging.getLogger(__name__)
+
+
+class ImageTools:
+    """画像処理ユーティリティ"""
+    
+    def __init__(self, temp_dir: Path | None = None):
+        self.temp_dir = temp_dir or Path(tempfile.gettempdir())
+        self.session = requests.Session()
+        # ブラウザ風のUser-Agentを設定
+        self.session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Referer": "https://www.dmm.co.jp/"
+        })
+    
+    def download(self, url: str, filename: str | None = None) -> Path:
+        """
+        画像をダウンロード
+        
+        Args:
+            url: 画像URL
+            filename: 保存ファイル名（省略時はURLから推測）
+        
+        Returns:
+            保存されたファイルパス
+        """
+        if not filename:
+            filename = url.split("/")[-1].split("?")[0]
+            if not filename:
+                filename = "image.jpg"
+        
+        save_path = self.temp_dir / filename
+        
+        logger.info(f"画像ダウンロード: {url}")
+        
+        try:
+            response = self.session.get(url, timeout=30, stream=True)
+            response.raise_for_status()
+            
+            with open(save_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            
+            logger.info(f"画像保存完了: {save_path}")
+            return save_path
+            
+        except Exception as e:
+            logger.error(f"画像ダウンロード失敗: {e}")
+            raise
+    
+    def download_to_bytes(self, url: str) -> tuple[bytes, str, str]:
+        """
+        画像をバイト列としてダウンロード
+        
+        Args:
+            url: 画像URL
+        
+        Returns:
+            (バイト列, ファイル名, MIMEタイプ)
+        """
+        filename = url.split("/")[-1].split("?")[0]
+        if not filename:
+            filename = "image.jpg"
+        
+        logger.info(f"画像ダウンロード（メモリ）: {url}")
+        
+        try:
+            response = self.session.get(url, timeout=30)
+            response.raise_for_status()
+            
+            # Content-Typeを取得
+            mime_type = response.headers.get("Content-Type", "image/jpeg")
+            content_size = len(response.content)
+            
+            logger.info(f"ダウンロード成功: {filename} ({content_size} bytes, type={mime_type})")
+            
+            # あまりに小さい場合はプレースホルダーの可能性あり
+            if content_size < 10000:
+                logger.warning(f"警告: 画像サイズが非常に小さいです ({content_size} bytes)。プレースホルダーの可能性があります。")
+            
+            return response.content, filename, mime_type
+
+            
+        except Exception as e:
+            logger.error(f"画像ダウンロード失敗: {e}")
+            raise
+    
+    def add_text_overlay(
+        self,
+        image_path: Path,
+        text: str,
+        output_path: Path | None = None,
+    ) -> Path:
+        """
+        画像に文字を入れる（オプション機能）
+        
+        Note: 
+            この機能はPillowが必要です。
+            MVPではスキップし、後で有効化できるようにしています。
+        
+        Args:
+            image_path: 入力画像パス
+            text: 追加するテキスト
+            output_path: 出力パス（省略時は新しいファイルを作成）
+        
+        Returns:
+            出力画像パス
+        """
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+        except ImportError:
+            logger.warning("Pillowがインストールされていません。文字入れをスキップします。")
+            return image_path
+        
+        if not output_path:
+            output_path = image_path.with_stem(f"{image_path.stem}_overlay")
+        
+        try:
+            with Image.open(image_path) as img:
+                draw = ImageDraw.Draw(img)
+                
+                # フォントサイズを画像サイズに合わせる
+                font_size = max(20, img.width // 20)
+                
+                try:
+                    # システムフォントを使用（日本語対応）
+                    font = ImageFont.truetype("msgothic.ttc", font_size)
+                except OSError:
+                    # フォールバック
+                    font = ImageFont.load_default()
+                
+                # テキスト位置（下部中央）
+                bbox = draw.textbbox((0, 0), text, font=font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+                
+                x = (img.width - text_width) // 2
+                y = img.height - text_height - 20
+                
+                # 半透明の背景
+                padding = 10
+                draw.rectangle(
+                    [x - padding, y - padding, x + text_width + padding, y + text_height + padding],
+                    fill=(0, 0, 0, 180),
+                )
+                
+                # テキスト描画
+                draw.text((x, y), text, font=font, fill=(255, 255, 255))
+                
+                img.save(output_path)
+                logger.info(f"文字入れ完了: {output_path}")
+                
+                return output_path
+                
+        except Exception as e:
+            logger.error(f"文字入れ失敗: {e}")
+            return image_path  # 失敗時は元画像を返す

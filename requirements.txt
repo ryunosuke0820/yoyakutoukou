@@ -1,0 +1,9 @@
+# FANZA → WordPress 自動記事投稿ボット
+
+# 必須
+python-dotenv>=1.0.0
+requests>=2.31.0
+openai>=1.0.0
+
+# オプション（画像文字入れ用）
+# Pillow>=10.0.0
