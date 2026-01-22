@@ -15,16 +15,28 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def get_drafts(wp_client: WPClient, per_page: int = 100) -> list:
-    """下書き記事を全て取得"""
-    endpoint = f"posts?status=draft&per_page={per_page}"
-    try:
-        response = wp_client._request("GET", endpoint)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        logger.error(f"下書き取得失敗: {e}")
-        return []
+def get_posts(wp_client: WPClient, per_page: int = 100) -> list:
+    """下書き記事と公開済み記事を全て取得"""
+    all_posts = []
+    
+    for status in ["draft", "publish"]:
+        page = 1
+        while True:
+            endpoint = f"posts?status={status}&per_page={per_page}&page={page}"
+            try:
+                response = wp_client._request("GET", endpoint)
+                response.raise_for_status()
+                posts = response.json()
+                if not posts:
+                    break
+                all_posts.extend(posts)
+                logger.info(f"{status}記事: {len(posts)}件取得 (page={page})")
+                page += 1
+            except Exception as e:
+                logger.error(f"{status}記事取得失敗: {e}")
+                break
+    
+    return all_posts
 
 
 def delete_post(wp_client: WPClient, post_id: int, force: bool = True) -> bool:
@@ -50,18 +62,18 @@ def main():
         app_password=config.wp_app_password,
     )
     
-    # 下書き記事を取得
-    logger.info("下書き記事を取得中...")
-    drafts = get_drafts(wp_client)
-    logger.info(f"取得した下書き記事: {len(drafts)}件")
+    # 記事を取得（下書き＋公開済み）
+    logger.info("記事を取得中...")
+    posts = get_posts(wp_client)
+    logger.info(f"取得した記事: {len(posts)}件")
     
-    if not drafts:
-        print("下書き記事がありません")
+    if not posts:
+        print("記事がありません")
         return
     
     # タイトルごとにグループ化
     title_groups = defaultdict(list)
-    for post in drafts:
+    for post in posts:
         title = post["title"]["rendered"]
         title_groups[title].append(post)
     

@@ -15,6 +15,7 @@ from openai_client import OpenAIClient
 from wp_client import WPClient
 from renderer import Renderer
 from image_tools import ImageTools
+from dedupe_store import DedupeStore
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -113,6 +114,11 @@ def main():
         )
         renderer = Renderer(templates_dir=config.base_dir / "templates")
         
+        # 重複防止ストア初期化
+        dedupe_store = DedupeStore(db_path=config.data_dir / "posted.sqlite3")
+        stats = dedupe_store.get_stats()
+        logger.info(f"重複防止ストア: 合計={stats['total']}, 下書き={stats['drafted']}, ドライラン={stats['dry_run']}, 失敗={stats['failed']}件")
+        
         # ────────────────────────────────────────────────────────────────
         # STEP fanza_fetch
         # ────────────────────────────────────────────────────────────────
@@ -134,9 +140,19 @@ def main():
         fail_count = 0
         
         # 全件をループ処理
+        # 投稿済み商品を除外
+        skipped_count = 0
         for idx, item in enumerate(items, 1):
+            product_id = item['product_id']
+            
+            # 重複チェック
+            if dedupe_store.is_posted(product_id):
+                logger.info(f"[{idx}/{len(items)}] スキップ（投稿済み）: {product_id}")
+                skipped_count += 1
+                continue
+            
             logger.info(f"\n{'='*60}")
-            logger.info(f"[{idx}/{len(items)}] 対象商品: {item['product_id']} - {item['title'][:40]}...")
+            logger.info(f"[{idx}/{len(items)}] 対象商品: {product_id} - {item['title'][:40]}...")
             logger.info("=" * 60)
             
             try:
@@ -245,6 +261,8 @@ def main():
                     dry_run_path.parent.mkdir(parents=True, exist_ok=True)
                     dry_run_path.write_text(content_html, encoding="utf-8")
                     logger.info(f"ドライランHTML保存: {dry_run_path}")
+                    # ドライラン時も記録して再実行時にスキップ
+                    dedupe_store.record_success(product_id, wp_post_id=None, status="dry_run")
                     success_count += 1
                     continue
                 
@@ -266,10 +284,14 @@ def main():
                 end()
                 
                 logger.info(f"投稿成功: wp_post_id={post_id}")
+                # 投稿成功を記録
+                dedupe_store.record_success(product_id, wp_post_id=post_id, status="drafted")
                 success_count += 1
                 
             except Exception as e:
                 logger.exception(f"[{idx}/{len(items)}] 処理失敗: {e}")
+                # 失敗を記録（リトライ用に別ステータス）
+                dedupe_store.record_failure(product_id, str(e))
                 fail_count += 1
                 continue  # 次の商品へ
         
@@ -279,7 +301,7 @@ def main():
             print("✅ ドライラン完了！", flush=True)
         else:
             print("✅ WordPress投稿完了！", flush=True)
-        print(f"   成功: {success_count}件 / 失敗: {fail_count}件 / 合計: {len(items)}件", flush=True)
+        print(f"   成功: {success_count}件 / 失敗: {fail_count}件 / スキップ: {skipped_count}件 / 合計: {len(items)}件", flush=True)
         print("=" * 60 + "\n", flush=True)
         
     except Exception as e:
