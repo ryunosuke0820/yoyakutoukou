@@ -10,6 +10,11 @@ import requests
 logger = logging.getLogger(__name__)
 
 
+class ImagePlaceholderError(Exception):
+    """画像がプレースホルダー（まだ準備されていない）場合のエラー"""
+    pass
+
+
 class ImageTools:
     """画像処理ユーティリティ"""
     
@@ -83,9 +88,10 @@ class ImageTools:
             
             logger.info(f"ダウンロード成功: {filename} ({content_size} bytes, type={mime_type})")
             
-            # あまりに小さい場合はプレースホルダーの可能性あり
+            # あまりに小さい場合はプレースホルダーの可能性あり → エラーとして扱う
             if content_size < 10000:
-                logger.warning(f"警告: 画像サイズが非常に小さいです ({content_size} bytes)。プレースホルダーの可能性があります。")
+                logger.warning(f"画像サイズが非常に小さいです ({content_size} bytes)。プレースホルダーの可能性があります。")
+                raise ImagePlaceholderError(f"画像がプレースホルダーです（サイズ: {content_size} bytes）。まだ準備されていない可能性があります。")
             
             return response.content, filename, mime_type
 

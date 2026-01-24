@@ -20,7 +20,7 @@ from fanza_client import FanzaClient
 from openai_client import OpenAIClient
 from wp_client import WPClient
 from renderer import Renderer
-from image_tools import ImageTools
+from image_tools import ImageTools, ImagePlaceholderError
 from dedupe_store import DedupeStore
 
 
@@ -224,13 +224,18 @@ def main():
                     # アイキャッチ画像用のメディアIDを保存
                     featured_media_id = None
                     
-                    # パッケージ画像をアップロード
+                    # パッケージ画像をアップロード（プレースホルダーならスキップ）
                     if item.get("package_image_url"):
                         try:
                             img_bytes, filename, mime_type = image_tools.download_to_bytes(item["package_image_url"])
                             result = wp_client.upload_media(file_bytes=img_bytes, filename=filename, mime_type=mime_type)
                             item["package_image_url"] = result.get("source_url", item["package_image_url"])
                             logger.info(f"パッケージ画像アップロード完了: {item['package_image_url']}")
+                        except ImagePlaceholderError as e:
+                            logger.warning(f"画像がまだ準備されていません。この商品をスキップします: {e}")
+                            end()  # step終了
+                            fail_count += 1
+                            continue  # 次の商品へ
                         except Exception as e:
                             logger.warning(f"パッケージ画像アップロード失敗: {e}")
                     
