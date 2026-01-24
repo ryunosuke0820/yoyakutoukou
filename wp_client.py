@@ -86,6 +86,7 @@ class WPClient:
         categories: list[int] | None = None,
         tags: list[int] | None = None,
         featured_media: int | None = None,
+        fanza_product_id: str | None = None,
     ) -> dict[str, Any]:
         """
         投稿を作成
@@ -99,6 +100,7 @@ class WPClient:
             categories: カテゴリIDのリスト
             tags: タグIDのリスト
             featured_media: アイキャッチ画像のメディアID
+            fanza_product_id: FANZA商品ID（重複チェック用に永続化）
         
         Returns:
             作成された投稿データ
@@ -122,6 +124,10 @@ class WPClient:
         if featured_media:
             data["featured_media"] = featured_media
         
+        # FANZA商品IDをメタ情報として保存（重複チェック用）
+        if fanza_product_id:
+            data["meta"] = {"fanza_product_id": fanza_product_id}
+        
         logger.info(f"WP投稿作成: {title[:30]}... status={status}")
         
         response = self._request("POST", "posts", json=data)
@@ -131,6 +137,67 @@ class WPClient:
         logger.info(f"投稿作成成功: id={result['id']}, link={result.get('link', '')}")
         
         return result
+    
+    def get_posted_fanza_ids(self, per_page: int = 100, max_pages: int = 10) -> set[str]:
+        """
+        既存投稿からFANZA商品IDを取得（重複チェック用）
+        
+        WordPressに保存された全投稿のメタ情報から fanza_product_id を収集し、
+        GitHub Actions等で実行時にDBがリセットされても永続的にチェック可能にする
+        
+        Args:
+            per_page: 1ページあたりの取得件数
+            max_pages: 最大ページ数
+        
+        Returns:
+            投稿済みFANZA商品IDのセット
+        """
+        posted_ids = set()
+        
+        for page in range(1, max_pages + 1):
+            try:
+                response = self._request("GET", "posts", params={
+                    "per_page": per_page,
+                    "page": page,
+                    "status": "any",  # draft, publish, pending 全て
+                    "context": "edit",  # メタ情報を含める
+                })
+                
+                if response.status_code == 400:
+                    # ページが存在しない場合
+                    break
+                    
+                response.raise_for_status()
+                posts = response.json()
+                
+                if not posts:
+                    break
+                
+                for post in posts:
+                    meta = post.get("meta", {})
+                    if isinstance(meta, dict):
+                        fanza_id = meta.get("fanza_product_id")
+                        if fanza_id:
+                            posted_ids.add(fanza_id)
+                    elif isinstance(meta, list):
+                        # メタが配列の場合
+                        for m in meta:
+                            if isinstance(m, dict) and m.get("key") == "fanza_product_id":
+                                posted_ids.add(m.get("value", ""))
+                
+                logger.debug(f"WP投稿取得 page={page}: {len(posts)}件, 累計ID={len(posted_ids)}")
+                
+                # 取得件数がper_page未満なら最終ページ
+                if len(posts) < per_page:
+                    break
+                    
+            except Exception as e:
+                logger.warning(f"WP投稿取得エラー page={page}: {e}")
+                break
+        
+        logger.info(f"WordPress投稿済みFANZA ID: 合計{len(posted_ids)}件")
+        return posted_ids
+
     
     def get_posts(self, per_page: int = 100, status: str = "publish") -> list[dict]:
         """投稿一覧を取得"""
@@ -147,6 +214,18 @@ class WPClient:
         response = self._request("GET", f"posts/{post_id}", params={"context": "edit"})
         response.raise_for_status()
         return response.json()
+
+    def get_media(self, media_id: int) -> dict:
+        """メディア情報を取得"""
+        response = self._request("GET", f"media/{media_id}")
+        response.raise_for_status()
+        return response.json()
+
+    def get_categories(self, per_page: int = 100) -> list[dict]:
+        """カテゴリ一覧を取得"""
+        response = self._request("GET", "categories", params={"per_page": per_page})
+        response.raise_for_status()
+        return response.json()
     
     def update_post(self, post_id: int, data: dict) -> dict:
         """投稿を更新"""
@@ -154,7 +233,7 @@ class WPClient:
         response.raise_for_status()
         return response.json()
     
-    def post_draft(self, title: str, content: str, excerpt: str = "", featured_media: int | None = None) -> int:
+    def post_draft(self, title: str, content: str, excerpt: str = "", featured_media: int | None = None, categories: list[int] | None = None, fanza_product_id: str | None = None) -> int:
         """
         投稿を作成（本番公開）
         
@@ -163,6 +242,8 @@ class WPClient:
             content: 記事本文HTML
             excerpt: 抜粋
             featured_media: アイキャッチ画像のメディアID
+            categories: カテゴリIDのリスト
+            fanza_product_id: FANZA商品ID（重複チェック用）
         
         Returns:
             投稿ID
@@ -172,7 +253,9 @@ class WPClient:
             content=content, 
             excerpt=excerpt, 
             status="publish",  # 本投稿に変更
-            featured_media=featured_media
+            featured_media=featured_media,
+            categories=categories,
+            fanza_product_id=fanza_product_id
         )
         return result["id"]
     

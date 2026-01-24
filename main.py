@@ -5,9 +5,15 @@ FANZA → WordPress 自動記事投稿ボット
 """
 import argparse
 import logging
+import io
 import sys
 import time
 from pathlib import Path
+
+# Windows環境での文字化け対策
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 from config import get_config
 from fanza_client import FanzaClient
@@ -71,8 +77,8 @@ def main():
     parser.add_argument(
         "--sort",
         type=str,
-        default="rank",
-        help="ソート順 (rank: 人気順, date: 新着順, etc. デフォルト: rank)",
+        default="date",
+        help="ソート順 (date: 新着順[推奨], rank: 人気順. デフォルト: date)",
     )
     parser.add_argument(
         "--since",
@@ -120,17 +126,68 @@ def main():
         logger.info(f"重複防止ストア: 合計={stats['total']}, 下書き={stats['drafted']}, ドライラン={stats['dry_run']}, 失敗={stats['failed']}件")
         
         # ────────────────────────────────────────────────────────────────
-        # STEP fanza_fetch
+        # STEP fanza_fetch (ページング対応・100件初回取得)
         # ────────────────────────────────────────────────────────────────
         end = step("fanza_fetch")
-        items = fanza_client.fetch(limit=args.limit, since=args.since, sort=args.sort)
+        
+        # 設定: 投稿目標件数とページング
+        target_count = args.limit  # 投稿したい件数
+        fetch_batch_size = 100     # 1回のAPI取得件数
+        max_pages = 5              # 最大ページ数
+        
+        all_items = []        # 全取得アイテム
+        posted_ids = set()    # 投稿済みID（サーバー側からも取得）
+        
+        # WordPress側から既存の投稿済みIDを取得（永続チェック）
+        try:
+            wp_posted_ids = wp_client.get_posted_fanza_ids()
+            posted_ids.update(wp_posted_ids)
+            logger.info(f"WordPress側の投稿済みID: {len(wp_posted_ids)}件")
+        except Exception as e:
+            logger.warning(f"WordPress側の投稿済みID取得失敗（続行）: {e}")
+        
+        # ローカルDBからも投稿済みIDを確認
+        # ※dedupe_storeのis_postedは個別チェック用なので、ここでは使わない
+        
+        # ページングで候補を取得
+        for page in range(max_pages):
+            offset = page * fetch_batch_size
+            logger.info(f"FANZA API取得: page={page+1}, offset={offset}")
+            
+            batch = fanza_client.fetch(
+                limit=fetch_batch_size, 
+                since=args.since, 
+                sort=args.sort,
+                offset=offset
+            )
+            
+            if not batch:
+                logger.info(f"page={page+1}で取得件数0のため終了")
+                break
+            
+            # 投稿済みを除外して追加
+            for item in batch:
+                pid = item['product_id']
+                if pid in posted_ids or dedupe_store.is_posted(pid):
+                    continue
+                all_items.append(item)
+                posted_ids.add(pid)  # 重複追加防止
+            
+            logger.info(f"page={page+1}: 取得{len(batch)}件 → 未投稿候補{len(all_items)}件")
+            
+            # 目標件数に達したら終了
+            if len(all_items) >= target_count:
+                break
+        
         end()
         
-        if not items:
-            logger.warning("取得商品が0件のため終了")
+        if not all_items:
+            logger.warning("未投稿の商品が0件のため終了")
             sys.exit(0)
         
-        logger.info(f"取得完了: {len(items)}件")
+        # 投稿対象を目標件数に絞る
+        items = all_items[:target_count]
+        logger.info(f"投稿対象: {len(items)}件 (候補総数: {len(all_items)}件)")
         
         # ImageTools は1回だけ初期化
         image_tools = ImageTools()
@@ -138,18 +195,11 @@ def main():
         # 成功・失敗カウンタ
         success_count = 0
         fail_count = 0
+        posted_product_ids = []  # 今回投稿したIDのログ用
         
-        # 全件をループ処理
-        # 投稿済み商品を除外
-        skipped_count = 0
+        # 全件をループ処理（既に投稿済み除外済み）
         for idx, item in enumerate(items, 1):
             product_id = item['product_id']
-            
-            # 重複チェック
-            if dedupe_store.is_posted(product_id):
-                logger.info(f"[{idx}/{len(items)}] スキップ（投稿済み）: {product_id}")
-                skipped_count += 1
-                continue
             
             logger.info(f"\n{'='*60}")
             logger.info(f"[{idx}/{len(items)}] 対象商品: {product_id} - {item['title'][:40]}...")
@@ -267,6 +317,50 @@ def main():
                     continue
                 
                 # ────────────────────────────────────────────────────────────────
+                # STEP taxonomies (カテゴリ・タグ準備)
+                # ────────────────────────────────────────────────────────────────
+                end = step(f"taxonomies [{idx}/{len(items)}]")
+                
+                # ジャンルから大カテゴリを判定
+                genres_raw = item.get("genre", [])
+                genres_str = "".join(genres_raw)
+                title_str = item.get("title", "")
+                
+                # 優先順位に基づいたマッピング
+                mapping_order = [
+                    ("VR作品", ["VR", "ハイクオリティVR"]),
+                    ("アニメ・2D", ["アニメ", "二次元", "CG"]),
+                    ("素人・ナンパ", ["素人", "ナンパ", "投稿", "地味"]),
+                    ("熟女・人妻", ["熟女", "人妻", "お姉さん", "四十路", "美魔女", "お母さん"]),
+                    ("美少女・若手", ["美少女", "若手", "新人", "10代", "女子大生"]),
+                    ("巨乳・爆乳", ["巨乳", "爆乳", "爆にゅう"]),
+                    ("単体女優", ["単体作品"]),
+                    ("企画・バラエティ", ["企画", "バラエティー", "コスプレ"]),
+                ]
+                
+                selected_big_cat = None
+                
+                # タイトルにVRが含まれていればVR作品を最優先
+                if "VR" in title_str.upper():
+                    selected_big_cat = "VR作品"
+                else:
+                    # 優先順位に従って判定
+                    for big_cat, keywords in mapping_order:
+                        if any(kw in genres_str for kw in keywords):
+                            selected_big_cat = big_cat
+                            break
+                
+                if not selected_big_cat:
+                    selected_big_cat = "動画"  # 該当なしの場合のデフォルト
+                
+                # カテゴリIDとタグIDを取得
+                category_ids, tag_ids = wp_client.prepare_taxonomies(
+                    genres=[selected_big_cat],  # リスト形式で渡すが中身は1つ
+                    actresses=item.get("actress", [])
+                )
+                end()
+
+                # ────────────────────────────────────────────────────────────────
                 # STEP wp_post_draft
                 # ────────────────────────────────────────────────────────────────
                 end = step(f"wp_post_draft [{idx}/{len(items)}]")
@@ -279,7 +373,9 @@ def main():
                     title=item["title"], 
                     content=content_html,
                     excerpt=excerpt_text,
-                    featured_media=featured_media_id
+                    featured_media=featured_media_id,
+                    categories=category_ids,
+                    fanza_product_id=product_id
                 )
                 end()
                 
@@ -287,6 +383,7 @@ def main():
                 # 投稿成功を記録
                 dedupe_store.record_success(product_id, wp_post_id=post_id, status="drafted")
                 success_count += 1
+                posted_product_ids.append(product_id)
                 
             except Exception as e:
                 logger.exception(f"[{idx}/{len(items)}] 処理失敗: {e}")
@@ -296,13 +393,20 @@ def main():
                 continue  # 次の商品へ
         
         # 最終結果サマリー
-        print("\n" + "=" * 60, flush=True)
+        logger.info("\n" + "=" * 60)
         if args.dry_run:
-            print("✅ ドライラン完了！", flush=True)
+            logger.info("[SUCCESS] Dry-run completed!")
         else:
-            print("✅ WordPress投稿完了！", flush=True)
-        print(f"   成功: {success_count}件 / 失敗: {fail_count}件 / スキップ: {skipped_count}件 / 合計: {len(items)}件", flush=True)
-        print("=" * 60 + "\n", flush=True)
+            logger.info("[SUCCESS] Post completed!")
+        logger.info(f"   成功: {success_count} / 失敗: {fail_count} / 対象: {len(items)}")
+        
+        # 今回投稿したIDの一覧をログ出力
+        if posted_product_ids:
+            logger.info(f"今回投稿したID ({len(posted_product_ids)}件):")
+            for pid in posted_product_ids:
+                logger.info(f"   - {pid}")
+        
+        logger.info("=" * 60 + "\n")
         
     except Exception as e:
         print(f"[ERROR] {type(e).__name__}: {e}", flush=True)

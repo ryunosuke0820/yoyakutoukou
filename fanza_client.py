@@ -76,6 +76,7 @@ class FanzaClient:
         floor: str = "videoa",
         sort: str = "date",
         since: str | None = None,
+        offset: int = 0,
     ) -> list[Product]:
         """
         商品を検索して取得
@@ -87,6 +88,7 @@ class FanzaClient:
             floor: フロア（videoa/videoc等）
             sort: ソート順（date/rank等）
             since: この日付以降（YYYY-MM-DD形式）
+            offset: 取得開始位置（ページング用）
         
         Returns:
             Productのリスト
@@ -99,6 +101,7 @@ class FanzaClient:
             "floor": floor,
             "hits": min(limit, 100),
             "sort": sort,
+            "offset": offset + 1,  # DMM APIは1始まり
             "output": "json",
         }
         
@@ -108,7 +111,7 @@ class FanzaClient:
             params["gte_date"] = since.replace("-", "")
         
         try:
-            logger.info(f"FANZA API呼び出し: limit={limit}, sort={sort}")
+            logger.info(f"FANZA API呼び出し: limit={limit}, sort={sort}, offset={offset}")
             response = self.session.get(
                 self.BASE_URL,
                 params=params,
@@ -120,7 +123,7 @@ class FanzaClient:
                 retry_after = int(response.headers.get("Retry-After", 60))
                 logger.warning(f"レート制限。{retry_after}秒待機...")
                 time.sleep(retry_after)
-                return self.search(limit, site, service, floor, sort, since)
+                return self.search(limit, site, service, floor, sort, since, offset)
             
             response.raise_for_status()
             data = response.json()
@@ -134,7 +137,7 @@ class FanzaClient:
             logger.error(f"FANZA APIエラー: {e}")
             raise
     
-    def fetch(self, limit: int = 1, since: str | None = None, sort: str = "date") -> list[dict]:
+    def fetch(self, limit: int = 1, since: str | None = None, sort: str = "date", offset: int = 0) -> list[dict]:
         """
         商品を取得してdict形式で返す（シンプルAPI）
         
@@ -142,11 +145,12 @@ class FanzaClient:
             limit: 取得件数
             since: この日付以降（YYYY-MM-DD形式）
             sort: ソート順（date, rank等）
+            offset: 取得開始位置（ページング用）
         
         Returns:
             商品dictのリスト
         """
-        products = self.search(limit=limit, since=since, sort=sort)
+        products = self.search(limit=limit, since=since, sort=sort, offset=offset)
         return [p.to_dict() for p in products]
     
     def _parse_response(self, data: dict[str, Any]) -> list[Product]:
