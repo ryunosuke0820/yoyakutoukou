@@ -261,23 +261,23 @@ def main():
                             logger.warning(f"パッケージ画像アップロード失敗: {e}")
                     
                     # シーン画像をアップロード（AI生成前に決定済みのscene_image_urlsを使用）
-                    # アイキャッチ用に後半の画像を選ぶ（肌の露出が多い）
+                    # アイキャッチ用: 顔がありつつエロいシーン（中盤〜後半を狙う）
                     eyecatch_url = None
                     if sample_pool:
-                        # 後半のインデックスを狙う（肌露出多め）
+                        # インデックス4-6あたりが「顔あり＋エロい」の確率が高い
                         # 画像枚数に応じて適切なインデックスを選択
-                        if len(sample_pool) >= 9:
-                            eyecatch_idx = 7  # 9枚以上なら7
-                        elif len(sample_pool) >= 7:
-                            eyecatch_idx = 6  # 7-8枚なら6
-                        elif len(sample_pool) >= 5:
-                            eyecatch_idx = 4  # 5-6枚なら4
-                        elif len(sample_pool) >= 3:
-                            eyecatch_idx = 2  # 3-4枚なら2
+                        if len(sample_pool) >= 10:
+                            eyecatch_idx = 5  # 10枚以上なら5（中盤）
+                        elif len(sample_pool) >= 8:
+                            eyecatch_idx = 4  # 8-9枚なら4
+                        elif len(sample_pool) >= 6:
+                            eyecatch_idx = 3  # 6-7枚なら3
+                        elif len(sample_pool) >= 4:
+                            eyecatch_idx = 2  # 4-5枚なら2
                         else:
-                            eyecatch_idx = len(sample_pool) - 1  # 少ない場合は最後
+                            eyecatch_idx = 1 if len(sample_pool) >= 2 else 0  # 少ない場合
                         eyecatch_url = sample_pool[eyecatch_idx]
-                        logger.info(f"アイキャッチ画像候補: インデックス {eyecatch_idx} を選択（肌露出狙い）")
+                        logger.info(f"アイキャッチ画像候補: インデックス {eyecatch_idx} を選択（顔あり＋エロ狙い）")
                     
                     new_sample_urls = []
                     for i, sample_url in enumerate(scene_image_urls[:3]):
