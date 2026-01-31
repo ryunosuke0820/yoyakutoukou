@@ -45,6 +45,12 @@ class WPClient:
         
         # リトライ設定付きセッション
         self.session = requests.Session()
+        # User-Agentをブラウザ風に偽装 (Mixhost/WAF対策)
+        self.session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "application/json"
+        })
+        
         retry_strategy = Retry(
             total=2,  # 最大2回リトライ
             backoff_factor=1,
