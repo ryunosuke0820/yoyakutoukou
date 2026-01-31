@@ -35,12 +35,12 @@ jobs:
       
       - name: Create .env file
         run: |
-          echo "FANZA_API_KEY=${{ secrets.FANZA_API_KEY }}" >> .env
-          echo "FANZA_AFFILIATE_ID=${{ secrets.FANZA_AFFILIATE_ID }}" >> .env
-          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
-          echo "WP_BASE_URL=${{ secrets.WP_BASE_URL }}" >> .env
-          echo "WP_USERNAME=${{ secrets.WP_USERNAME }}" >> .env
-          echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD }}" >> .env
+          echo "FANZA_API_KEY='${{ secrets.FANZA_API_KEY }}'" >> .env
+          echo "FANZA_AFFILIATE_ID='${{ secrets.FANZA_AFFILIATE_ID }}'" >> .env
+          echo "OPENAI_API_KEY='${{ secrets.OPENAI_API_KEY }}'" >> .env
+          echo "WP_BASE_URL='${{ secrets.WP_BASE_URL }}'" >> .env
+          echo "WP_USERNAME='${{ secrets.SD_WP_USERNAME }}'" >> .env
+          echo "WP_APP_PASSWORD='${{ secrets.SD_WP_APP_PASSWORD }}'" >> .env
       
       - name: Run FANZA Bot (sd01)
         run: python scripts/run_batch.py --subdomain sd01-chichi --limit 5

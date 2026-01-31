@@ -55,7 +55,7 @@ class ImageTools:
             mime_type = response.headers.get("Content-Type", "image/jpeg")
             content_size = len(response.content)
             logger.info(f"ダウンロード成功: {filename} ({content_size} bytes, type={mime_type})")
-            if content_size < 10000:
+            if content_size < 1000:
                 logger.warning(f"画像サイズが非常に小さいです ({content_size} bytes)。プレースホルダーの可能性があります。")
                 raise ImagePlaceholderError(f"画像がプレースホルダーです（サイズ: {content_size} bytes）。まだ準備されていない可能性があります。")
             return response.content, filename, mime_type

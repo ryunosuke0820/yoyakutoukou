@@ -38,6 +38,8 @@ class WPClient:
         
         # Basic認証ヘッダー
         credentials = f"{username}:{app_password}"
+        masked_password = app_password[:4] + "***" if app_password else "None"
+        logger.info(f"WP Auth Init: user={username}, password_prefix={masked_password}")
         encoded = base64.b64encode(credentials.encode()).decode()
         self.auth_header = f"Basic {encoded}"
         
