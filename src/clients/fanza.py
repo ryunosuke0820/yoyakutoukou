@@ -76,6 +76,9 @@ class FanzaClient:
                     timeout=(5.0, 30.0),  # (connect, read) タイムアウト
                 )
                 
+                if response.status_code >= 400:
+                    logger.error(f"FANZA API error body: {response.text}")
+
                 if response.status_code == 429:
                     retry_after = int(response.headers.get("Retry-After", 60))
                     logger.warning(f"レート制限。{retry_after}秒待機して再試行...")
