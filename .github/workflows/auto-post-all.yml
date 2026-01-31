@@ -84,7 +84,7 @@ jobs:
           
           # サイト別Application Password
           case "${{ matrix.site }}" in
-            sd01-chichi)   echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD_SD01 }}" >> .env ;;
+            sd01-chichi)   echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD }}" >> .env ;;
             sd02-shirouto) echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD_SD02 }}" >> .env ;;
             sd03-gyaru)    echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD_SD03 }}" >> .env ;;
             sd04-chijo)    echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD_SD04 }}" >> .env ;;
