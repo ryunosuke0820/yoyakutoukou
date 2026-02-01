@@ -41,7 +41,6 @@ jobs:
           echo "WP_BASE_URL=${{ secrets.WP_BASE_URL }}" >> .env
           echo "WP_USERNAME=${{ secrets.WP_USERNAME }}" >> .env
           echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD }}" >> .env
-          echo "USE_CDN_IMAGES=true" >> .env
       
       - name: Run FANZA Bot (sd01)
         run: python scripts/run_batch.py --subdomain sd01-chichi --limit 5

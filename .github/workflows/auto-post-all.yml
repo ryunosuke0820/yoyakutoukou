@@ -95,9 +95,6 @@ jobs:
             sd09-iyashi)   echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD_SD09 }}" >> .env ;;
             sd10-otona)    echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD_SD10 }}" >> .env ;;
           esac
-          
-          # CDNモード（画像アップロードをスキップ）
-          echo "USE_CDN_IMAGES=true" >> .env
       
       - name: Run FANZA Bot
         if: steps.check.outputs.should_run == 'true'
