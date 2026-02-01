@@ -2,6 +2,7 @@
 投稿統合サービス
 """
 import logging
+import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Any, Optional
