@@ -905,4 +905,27 @@
             grid-template-columns: 40% 60%;
         }
     }
+
+    /* 購入ラベル */
+    .aa-purchase-label {
+        text-align: center;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--aa-accent);
+        margin-bottom: 12px;
+        letter-spacing: 0.05em;
+        animation: aa-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes aa-pulse {
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.6;
+        }
+    }
 </style>

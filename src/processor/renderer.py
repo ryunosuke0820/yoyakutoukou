@@ -489,6 +489,11 @@ class Renderer:
         # Sticky CTAのJS機能は無効化（将来的にはテーマ側かプラグインで対応）
         
         body = "\n\n".join(parts)
+        
+        # サイト別ボタンクラスを置換
+        site_button_class = f"aa-btn-{site_id}" if site_id != "default" else ""
+        body = body.replace("{SITE_BUTTON_CLASS}", site_button_class)
+        
         # ブロックエディタのHTMLブロックとして包み、wpautopの崩れを抑制
         return f"<!-- wp:html -->\n{body}\n<!-- /wp:html -->"
 
