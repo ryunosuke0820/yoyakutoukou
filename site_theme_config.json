@@ -10,7 +10,7 @@
       ]
     },
     "cta": {
-      "label_primary": "???????????",
+      "label_primary": "\u3053\u306e\u8feb\u529b\u3092\u78ba\u304b\u3081\u308b",
       "label_secondary": "????????"
     },
     "stickyCta": {
@@ -18,7 +18,7 @@
       "showAfterScrollPct": 0,
       "once": true,
       "dismissable": true,
-      "label": "???????????"
+      "label": "\u7d9a\u304d\u3092\u898b\u308b"
     },
     "image": {
       "thumbShape": "rounded",
@@ -47,7 +47,7 @@
       ]
     },
     "cta": {
-      "label_primary": "???????????",
+      "label_primary": "\u30ea\u30a2\u30eb\u3092\u8997\u304f",
       "label_secondary": "????????"
     },
     "stickyCta": {
@@ -75,7 +75,7 @@
   "sd03-gyaru": {
     "theme": {
       "style": "neon_vivid",
-      "subColor": "neon_pink",
+      "subColor": "neon_yellow",
       "decor": [
         "neon",
         "diagonal-lines",
@@ -83,7 +83,7 @@
       ]
     },
     "cta": {
-      "label_primary": "???????????",
+      "label_primary": "\u52e2\u3044\u3067\u898b\u308b",
       "label_secondary": "????????"
     },
     "stickyCta": {
@@ -91,7 +91,7 @@
       "showAfterScrollPct": 0,
       "once": true,
       "dismissable": true,
-      "label": "???????????"
+      "label": "\u7d9a\u304d\u3092\u898b\u308b"
     },
     "image": {
       "thumbShape": "rounded",
@@ -112,7 +112,7 @@
   "sd04-chijo": {
     "theme": {
       "style": "dark_contrast",
-      "subColor": "wine_red",
+      "subColor": "teal",
       "decor": [
         "dark-bg",
         "strong-contrast",
@@ -120,7 +120,7 @@
       ]
     },
     "cta": {
-      "label_primary": "???????????",
+      "label_primary": "\u4e3b\u5c0e\u6a29\u3092\u59d4\u306d\u308b",
       "label_secondary": "????????"
     },
     "stickyCta": {
@@ -128,7 +128,7 @@
       "showAfterScrollPct": 0,
       "once": true,
       "dismissable": true,
-      "label": "???????????"
+      "label": "\u7d9a\u304d\u3092\u898b\u308b"
     },
     "image": {
       "thumbShape": "square",
@@ -157,7 +157,7 @@
       ]
     },
     "cta": {
-      "label_primary": "???????????",
+      "label_primary": "\u77e5\u3089\u306a\u3044\u4e00\u9762\u3092\u898b\u308b",
       "label_secondary": "????????"
     },
     "stickyCta": {
@@ -194,7 +194,7 @@
       ]
     },
     "cta": {
-      "label_primary": "???????????",
+      "label_primary": "\u79d8\u5bc6\u306e\u7d9a\u304d\u3092\u898b\u308b",
       "label_secondary": "????????"
     },
     "stickyCta": {
@@ -202,7 +202,7 @@
       "showAfterScrollPct": 0,
       "once": true,
       "dismissable": true,
-      "label": "???????????"
+      "label": "\u7d9a\u304d\u3092\u898b\u308b"
     },
     "image": {
       "thumbShape": "square",
@@ -230,7 +230,7 @@
       ]
     },
     "cta": {
-      "label_primary": "???????????",
+      "label_primary": "\u5927\u4eba\u306e\u9b45\u529b\u3092\u898b\u308b",
       "label_secondary": "????????"
     },
     "stickyCta": {
@@ -267,7 +267,7 @@
       ]
     },
     "cta": {
-      "label_primary": "???????????",
+      "label_primary": "\u843d\u3061\u7740\u3044\u305f\u9b45\u529b\u3092\u898b\u308b",
       "label_secondary": "????????"
     },
     "stickyCta": {
@@ -303,7 +303,7 @@
       ]
     },
     "cta": {
-      "label_primary": "???????????",
+      "label_primary": "\u4eca\u65e5\u306f\u3053\u308c\u306b\u3059\u308b",
       "label_secondary": "????????"
     },
     "stickyCta": {

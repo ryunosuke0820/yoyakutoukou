@@ -16,6 +16,8 @@ class Renderer:
         "navy": "#1e2a44",
         "brown": "#7a4b2a",
         "lavender": "#cbb9ff",
+        "neon_yellow": "#facc15",
+        "teal": "#14b8a6",
     }
 
     _IMG_SHADOW_MAP = {
@@ -438,9 +440,7 @@ class Renderer:
     <span class="aa-badge aa-badge-ext">DMM公式</span>
   </div>
         ''')
-        if sticky_cfg.get("enabled"):
-            sticky_label = sticky_cfg.get("label") or cta_primary or "続きを見る"
-            parts.append(self.render_sticky_cta(item.get("affiliate_url", ""), sticky_label, sticky_cfg, site_id))
+        # Sticky CTA disabled (requested)
         
         # 2. Hero (A)
         hero_html = self.render_hero(
