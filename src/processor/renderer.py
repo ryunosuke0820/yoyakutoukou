@@ -333,7 +333,7 @@ class Renderer:
         html = html.replace("{SPEC_TITLE}", spec_title)
         html = html.replace("{SPEC_TOGGLE_HINT}", "クリックで詳細を表示")
         
-        labels = ["Release Date", "Cast", "Maker", "Product ID"]
+        labels = ["配信開始日", "出演者", "メーカー", "品番"]
         values = [
             item.get("release_date", "N/A"),
             ", ".join(item.get("actress", [])) if item.get("actress") else "N/A",
