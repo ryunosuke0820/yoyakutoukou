@@ -331,12 +331,12 @@ class Renderer:
         html = html.replace("{SPEC_TITLE}", spec_title)
         html = html.replace("{SPEC_TOGGLE_HINT}", "クリックで詳細を表示")
         
-        labels = ["?????????", "??????, "????????", "???"]
+        labels = ["Release Date", "Cast", "Maker", "Product ID"]
         values = [
-            item.get("release_date", "???"),
-            ", ".join(item.get("actress", [])) if item.get("actress") else "???????,
-            item.get("maker", "???????),
-            item.get("product_id", "???"),
+            item.get("release_date", "N/A"),
+            ", ".join(item.get("actress", [])) if item.get("actress") else "N/A",
+            item.get("maker", "N/A"),
+            item.get("product_id", "N/A"),
         ]
         
         for i in range(4):
