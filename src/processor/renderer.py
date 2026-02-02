@@ -136,9 +136,10 @@ class Renderer:
   });
   document.querySelectorAll('[class*=\"author\"], [class*=\"profile\"], [class*=\"follow\"]').forEach((el) => {
     const text = (el.textContent || '').trim();
-    if (text.includes('をフォローする') || text.toLowerCase().includes('follow')) {
+    if (text.includes('をフォローする') || text.toLowerCase().includes('follow') || text.includes('moco0426')) {
       el.remove();
     }
+  });
 
   // Hide TOC blocks (theme/plugin)
   const tocSelectors = [
@@ -152,7 +153,6 @@ class Renderer:
   ];
   tocSelectors.forEach((sel) => {
     document.querySelectorAll(sel).forEach((el) => el.remove());
-  });
   });
 })();
 </script>"""
@@ -331,16 +331,15 @@ class Renderer:
         html = html.replace("{SPEC_TITLE}", spec_title)
         html = html.replace("{SPEC_TOGGLE_HINT}", "クリックで詳細を表示")
         
-        labels = ["配信開始日", "収録時間", "出演者", "メーカー", "品番"]
+        labels = ["?????????", "??????, "????????", "???"]
         values = [
-            item.get("release_date", "不明"),
-            item.get("duration", "不明"),
-            ", ".join(item.get("actress", [])) if item.get("actress") else "記載なし",
-            item.get("maker", "記載なし"),
-            item.get("product_id", "不明"),
+            item.get("release_date", "???"),
+            ", ".join(item.get("actress", [])) if item.get("actress") else "???????,
+            item.get("maker", "???????),
+            item.get("product_id", "???"),
         ]
         
-        for i in range(5):
+        for i in range(4):
             html = html.replace(f"{{SPEC_LABEL_{i+1}}}", labels[i])
             html = html.replace(f"{{SPEC_VALUE_{i+1}}}", values[i])
             
@@ -464,11 +463,11 @@ class Renderer:
             parts.append(self.render_feature(i, scenes[i], sample_urls[i] if i < len(sample_urls) else ""))
         parts.append('</section>')
         
-        # 4. Mid CTA (D)
-        parts.append(self.render_cta_mid(item.get("affiliate_url", ""), cta_label_secondary=cta_secondary))
-
-        # 5. Sample Video
+        # 4. Sample Video
         parts.append(self.render_video(item.get("sample_movie_url", "")))
+
+        # 5. Final CTA (move under sample video)
+        parts.append(self.render_cta_final(item.get("affiliate_url", ""), cta_label_primary=cta_primary))
 
         # 6. Spec (B)
         parts.append(self.render_spec(item, site_id=site_id))
@@ -477,8 +476,7 @@ class Renderer:
         if related_posts:
             parts.append(self.render_related(related_posts))
 
-        # 7. Final CTA (I)
-        parts.append(self.render_cta_final(item.get("affiliate_url", ""), cta_label_primary=cta_primary))
+        # 7. (removed: Final CTA moved under sample video)
         
         parts.append('</div>')
         
@@ -521,7 +519,7 @@ class Renderer:
         default_cta = "今すぐこの快楽を本編で堪能する"
         html = html.replace("{CTA_BUTTON_LABEL_FINAL}", cta_label_primary or default_cta)
         html = html.replace("{CTA_FINAL_NOTE_1}", "DMMなら最高画質ですぐに視聴開始")
-        html = html.replace("{CTA_FINAL_NOTE_2}", "今ならキャンペーンポイント還元中")
+        html = html.replace("{CTA_FINAL_NOTE_2}", "※18歳未満は閲覧できません")
         html = html.replace("{EXTERNAL_LINK_LINE}", "※DMM.co.jp（公式）へ移動します")
         return html
 

@@ -10,15 +10,15 @@
       ]
     },
     "cta": {
-      "label_primary": "この迫力を確かめる",
-      "label_secondary": "揺れをチェック"
+      "label_primary": "???????????",
+      "label_secondary": "????????"
     },
     "stickyCta": {
       "enabled": true,
-      "showAfterScrollPct": 40,
+      "showAfterScrollPct": 0,
       "once": true,
       "dismissable": true,
-      "label": "続きを見る"
+      "label": "???????????"
     },
     "image": {
       "thumbShape": "rounded",
@@ -47,11 +47,15 @@
       ]
     },
     "cta": {
-      "label_primary": "リアルを覗く",
-      "label_secondary": "この空気感を見る"
+      "label_primary": "???????????",
+      "label_secondary": "????????"
     },
     "stickyCta": {
-      "enabled": false
+      "enabled": true,
+      "showAfterScrollPct": 0,
+      "once": true,
+      "dismissable": true,
+      "label": "???????????"
     },
     "image": {
       "thumbShape": "square",
@@ -79,15 +83,15 @@
       ]
     },
     "cta": {
-      "label_primary": "勢いで見る",
-      "label_secondary": "テンション上げに行く"
+      "label_primary": "???????????",
+      "label_secondary": "????????"
     },
     "stickyCta": {
       "enabled": true,
-      "showAfterScrollPct": 30,
+      "showAfterScrollPct": 0,
       "once": true,
       "dismissable": true,
-      "label": "続きを見る"
+      "label": "???????????"
     },
     "image": {
       "thumbShape": "rounded",
@@ -116,15 +120,15 @@
       ]
     },
     "cta": {
-      "label_primary": "主導権を委ねる",
-      "label_secondary": "この空気に入る"
+      "label_primary": "???????????",
+      "label_secondary": "????????"
     },
     "stickyCta": {
       "enabled": true,
-      "showAfterScrollPct": 50,
+      "showAfterScrollPct": 0,
       "once": true,
       "dismissable": true,
-      "label": "続きを見る"
+      "label": "???????????"
     },
     "image": {
       "thumbShape": "square",
@@ -153,11 +157,15 @@
       ]
     },
     "cta": {
-      "label_primary": "知らない一面を見る",
-      "label_secondary": "印象が変わる瞬間"
+      "label_primary": "???????????",
+      "label_secondary": "????????"
     },
     "stickyCta": {
-      "enabled": false
+      "enabled": true,
+      "showAfterScrollPct": 0,
+      "once": true,
+      "dismissable": true,
+      "label": "???????????"
     },
     "image": {
       "thumbShape": "square",
@@ -186,15 +194,15 @@
       ]
     },
     "cta": {
-      "label_primary": "秘密の続きを見る",
-      "label_secondary": "続きを知る"
+      "label_primary": "???????????",
+      "label_secondary": "????????"
     },
     "stickyCta": {
       "enabled": true,
-      "showAfterScrollPct": 45,
+      "showAfterScrollPct": 0,
       "once": true,
       "dismissable": true,
-      "label": "続きを見る"
+      "label": "???????????"
     },
     "image": {
       "thumbShape": "square",
@@ -222,11 +230,15 @@
       ]
     },
     "cta": {
-      "label_primary": "大人の魅力を見る",
-      "label_secondary": "この余裕を見る"
+      "label_primary": "???????????",
+      "label_secondary": "????????"
     },
     "stickyCta": {
-      "enabled": false
+      "enabled": true,
+      "showAfterScrollPct": 0,
+      "once": true,
+      "dismissable": true,
+      "label": "???????????"
     },
     "image": {
       "thumbShape": "square",
@@ -255,11 +267,15 @@
       ]
     },
     "cta": {
-      "label_primary": "落ち着いた魅力を見る",
-      "label_secondary": "この安心感を見る"
+      "label_primary": "???????????",
+      "label_secondary": "????????"
     },
     "stickyCta": {
-      "enabled": false
+      "enabled": true,
+      "showAfterScrollPct": 0,
+      "once": true,
+      "dismissable": true,
+      "label": "???????????"
     },
     "image": {
       "thumbShape": "square",
@@ -287,11 +303,15 @@
       ]
     },
     "cta": {
-      "label_primary": "今日はこれにする",
-      "label_secondary": "癒しの時間へ"
+      "label_primary": "???????????",
+      "label_secondary": "????????"
     },
     "stickyCta": {
-      "enabled": false
+      "enabled": true,
+      "showAfterScrollPct": 0,
+      "once": true,
+      "dismissable": true,
+      "label": "???????????"
     },
     "image": {
       "thumbShape": "rounded",
@@ -306,39 +326,6 @@
         "mood_tags",
         "same_actress",
         "same_category"
-      ]
-    }
-  },
-  "sd10-otona": {
-    "theme": {
-      "style": "modern_teal",
-      "subColor": "turquoise",
-      "decor": [
-        "modern",
-        "teal",
-        "clean"
-      ]
-    },
-    "cta": {
-      "label_primary": "今すぐ楽しむ",
-      "label_secondary": "詳細を見る"
-    },
-    "stickyCta": {
-      "enabled": false
-    },
-    "image": {
-      "thumbShape": "square",
-      "shadow": "medium",
-      "hover": {
-        "type": "scale",
-        "scale": 1.05
-      }
-    },
-    "related": {
-      "priority": [
-        "same_category",
-        "similar_tags",
-        "same_actress"
       ]
     }
   }

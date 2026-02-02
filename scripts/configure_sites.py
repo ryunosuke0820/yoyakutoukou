@@ -27,7 +27,7 @@ SITES = [
     SiteConfig(subdomain="sd04-chijo", title="痴女プリーズ", tagline="", color="赤", keywords=["痴女", "誘惑", "露出"], affiliate_id=None),
     SiteConfig(subdomain="sd05-seiso", title="清楚特集", tagline="", color="白", keywords=["清楚", "お嬢様", "美少女"], affiliate_id=None),
     SiteConfig(subdomain="sd06-hitozuma", title="人妻・愛", tagline="", color="ワインレッド", keywords=["人妻", "不倫"], affiliate_id=None),
-    SiteConfig(subdomain="sd07-oneesan", title="お姉さん集め", tagline="", color="紺", keywords=["お姉さん", "綺麗なお姉さん"], affiliate_id=None),
+    SiteConfig(subdomain="sd07-oneesan", title="??????", tagline="", color="紺", keywords=["??????", "????", "?"], affiliate_id=None),
     SiteConfig(subdomain="sd08-jukujo", title="熟女の家", tagline="", color="茶色", keywords=["熟女", "美魔女"], affiliate_id=None),
     SiteConfig(subdomain="sd09-iyashi", title="夜の癒し♡", tagline="", color="ラベンダー", keywords=["癒やし", "マッサージ", "エステ"], affiliate_id=None),
     SiteConfig(subdomain="sd10-otona", title="大人な時間", tagline="", color="ターコイズ", keywords=["コスプレ", "制服", "イベント"], affiliate_id=None),

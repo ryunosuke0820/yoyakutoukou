@@ -9,6 +9,9 @@
         --aa-shadow: 0 10px 30px rgba(0, 0, 0, .18);
         --aa-accent: #7c5cff;
         --aa-accent2: #ff5ca8;
+        --aa-cta-accent: var(--aa-accent);
+        --aa-cta-accent2: var(--aa-accent2);
+        --aa-cta-text: #fff;
         --aa-good: #4cd37b;
         --aa-warn: #ffd166;
         --sub-color: var(--aa-line);
@@ -343,6 +346,11 @@
 
     .aa-cta {
         position: relative;
+        background: var(--aa-card);
+    }
+
+    .aa-cta-final {
+        background: var(--aa-card);
     }
 
     .aa-cta-box {
@@ -358,11 +366,11 @@
         border-radius: 14px;
         padding: 14px 12px;
         border: 1px solid transparent;
-        background: linear-gradient(135deg, var(--aa-accent), var(--aa-accent2));
-        color: #fff !important;
+        background: linear-gradient(135deg, var(--aa-cta-accent), var(--aa-cta-accent2));
+        color: var(--aa-cta-text) !important;
         font-weight: 700;
         letter-spacing: .02em;
-        box-shadow: 0 14px 28px rgba(124, 92, 255, .18), var(--aa-btn-glow);
+        box-shadow: 0 14px 28px color-mix(in srgb, var(--aa-cta-accent) 35%, transparent), var(--aa-btn-glow);
     }
 
     .aa-btn-secondary {
@@ -654,12 +662,6 @@
         pointer-events: auto;
     }
 
-    @media (min-width: 769px) {
-        .aa-sticky-cta {
-            display: none;
-        }
-    }
-
     .aa-sticky-cta .aa-btn {
         flex: 1;
         padding: 12px 12px;
@@ -750,9 +752,7 @@
 
     /* サイト別テーマ */
     /* メインサイト（わしの鑑定所）= 黒レイアウト */
-    /* サイト別テーマ */
-    /* メインサイト（わしの鑑定所）= 黒レイアウト */
-    .aa-site-default {
+    body[data-site="default"] {
         --aa-bg: #0f1115;
         --aa-card: #151923;
         --aa-text: #e9eefc;
@@ -766,7 +766,7 @@
     }
 
     /* 乳ラブ（ピンク） */
-    .aa-site-sd01-chichi {
+    body[data-site="sd01-chichi"] {
         --aa-bg: #fff7fb;
         --aa-card: #ffffff;
         --aa-text: #1f2330;
@@ -779,7 +779,7 @@
         --aa-warn: #f59e0b;
     }
 
-    .aa-site-sd02-shirouto {
+    body[data-site="sd02-shirouto"] {
         --aa-bg: #f6fbff;
         --aa-card: #ffffff;
         --aa-text: #0f172a;
@@ -792,7 +792,7 @@
         --aa-warn: #f59e0b;
     }
 
-    .aa-site-sd03-gyaru {
+    body[data-site="sd03-gyaru"] {
         --aa-bg: #0a0b10;
         --aa-card: #111427;
         --aa-text: #f4f6ff;
@@ -805,7 +805,7 @@
         --aa-warn: #ffd166;
     }
 
-    .aa-site-sd04-chijo {
+    body[data-site="sd04-chijo"] {
         --aa-bg: #0b0b0d;
         --aa-card: #141018;
         --aa-text: #f5f1f6;
@@ -818,7 +818,7 @@
         --aa-warn: #f59e0b;
     }
 
-    .aa-site-sd05-seiso {
+    body[data-site="sd05-seiso"] {
         --aa-bg: #f5fbff;
         --aa-card: #ffffff;
         --aa-text: #0f172a;
@@ -831,7 +831,7 @@
         --aa-warn: #f59e0b;
     }
 
-    .aa-site-sd06-hitozuma {
+    body[data-site="sd06-hitozuma"] {
         --aa-bg: #120b0f;
         --aa-card: #1a1217;
         --aa-text: #fff7f2;
@@ -844,7 +844,7 @@
         --aa-warn: #f59e0b;
     }
 
-    .aa-site-sd07-oneesan {
+    body[data-site="sd07-oneesan"] {
         --aa-bg: #0b1220;
         --aa-card: #101a33;
         --aa-text: #eef2ff;
@@ -857,7 +857,15 @@
         --aa-warn: #f59e0b;
     }
 
-    .aa-site-sd08-jukujo {
+    body[data-site="sd07-oneesan"],
+    body[data-site="sd07-oneesan"] .site,
+    body[data-site="sd07-oneesan"] .site-content,
+    body[data-site="sd07-oneesan"] .content-area,
+    body[data-site="sd07-oneesan"] .entry-content {
+        background: var(--aa-bg) !important;
+    }
+
+    body[data-site="sd08-jukujo"] {
         --aa-bg: #120a10;
         --aa-card: #1b101a;
         --aa-text: #fff1f7;
@@ -870,7 +878,7 @@
         --aa-warn: #f59e0b;
     }
 
-    .aa-site-sd09-iyashi {
+    body[data-site="sd09-iyashi"] {
         --aa-bg: #f3fffb;
         --aa-card: #ffffff;
         --aa-text: #0f172a;
@@ -883,7 +891,7 @@
         --aa-warn: #f59e0b;
     }
 
-    .aa-site-sd10-otona {
+    body[data-site="sd10-otona"] {
         --aa-bg: #0e1013;
         --aa-card: #151a1f;
         --aa-text: #f8fafc;
@@ -896,6 +904,42 @@
         --aa-warn: #f59e0b;
     }
 
+    body[data-site^="sd"] {
+        --aa-cta-accent: #ff2d55;
+        --aa-cta-accent2: #ff8a3d;
+        --aa-cta-text: #fff;
+    }
+
+    body[data-site^="sd"] .aa-btn-secondary {
+        background: linear-gradient(135deg, var(--aa-cta-accent), var(--aa-cta-accent2));
+        border-color: transparent;
+        color: var(--aa-cta-text) !important;
+        box-shadow: 0 14px 28px color-mix(in srgb, var(--aa-cta-accent) 35%, transparent), var(--aa-btn-glow);
+    }
+
+    body[data-site^="sd"] .aa-cta-top .aa-btn {
+        padding: 18px 14px;
+        font-size: 16px;
+        letter-spacing: .04em;
+        transform: translateY(-1px);
+        box-shadow:
+            0 22px 50px color-mix(in srgb, var(--aa-cta-accent) 55%, transparent),
+            0 0 0 2px color-mix(in srgb, var(--aa-cta-accent) 35%, transparent),
+            var(--aa-btn-glow);
+    }
+
+    body[data-site^="sd"] .aa-cta-mid .aa-btn {
+        background: linear-gradient(135deg, var(--aa-cta-accent), var(--aa-cta-accent2));
+        border-color: transparent;
+        color: var(--aa-cta-text) !important;
+        box-shadow: 0 12px 26px color-mix(in srgb, var(--aa-cta-accent) 30%, transparent), var(--aa-btn-glow);
+    }
+
+    body[data-site="sd07-oneesan"] {
+        --aa-cta-accent: var(--aa-accent);
+        --aa-cta-accent2: var(--aa-accent2);
+    }
+
     @media (max-width: 480px) {
         .aa-card {
             padding: 14px;
@@ -903,29 +947,6 @@
 
         .aa-tr {
             grid-template-columns: 40% 60%;
-        }
-    }
-
-    /* 購入ラベル */
-    .aa-purchase-label {
-        text-align: center;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--aa-accent);
-        margin-bottom: 12px;
-        letter-spacing: 0.05em;
-        animation: aa-pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes aa-pulse {
-
-        0%,
-        100% {
-            opacity: 1;
-        }
-
-        50% {
-            opacity: 0.6;
         }
     }
 </style>
