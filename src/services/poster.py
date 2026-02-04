@@ -233,7 +233,23 @@ class PosterService:
                 # プレビュー保存
                 try:
                     preview_path = self.config.base_dir / f"preview_{site_id}.html"
-                    preview_path.write_text(content_html, encoding="utf-8")
+                    # プレビュー用にメタタグを追加した完全なHTMLにする
+                    full_html = f"""<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview {site_id}</title>
+<style>
+body {{ max-width: 800px; margin: 0 auto; padding: 20px; font-family: sans-serif; background: #eee; }}
+.aa-wrap {{ background: #fff; margin: 0 auto; }}
+</style>
+</head>
+<body>
+{content_html}
+</body>
+</html>"""
+                    preview_path.write_text(full_html, encoding="utf-8")
                     logger.info(f"【ドライラン】プレビューHTMLを保存しました: {preview_path}")
                 except Exception as e:
                     logger.warning(f"プレビュー保存失敗: {e}")

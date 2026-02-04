@@ -117,6 +117,7 @@ def main():
 
     # サブドメイン指定がある場合、設定を上書き
     site_keywords = None
+    keyword_list: list[str] | None = None
     resolved_subdomain = args.subdomain
     if args.subdomain:
         subdomain_alias = {
@@ -127,8 +128,12 @@ def main():
         if site_info:
             logger.info(f"サイト設定適用: {site_info.title} ({resolved_subdomain})")
             config.wp_base_url = f"https://{resolved_subdomain}.av-kantei.com"
-            site_keywords = " ".join(site_info.keywords)
-            logger.info(f"検索キーワード: {site_keywords}")
+            # Use multiple keywords by cycling, instead of AND search
+            keyword_list = [kw for kw in site_info.keywords if kw]
+            if keyword_list:
+                logger.info(f"???????: {' '.join(keyword_list)}")
+            else:
+                site_keywords = None
         else:
             logger.error(f"サブドメイン {resolved_subdomain} の設定が見つかりません。")
             sys.exit(1)
@@ -142,7 +147,7 @@ def main():
     fanza_client = FanzaClient(config.fanza_api_key, affiliate_id)
     llm_client = OpenAIClient(config.openai_api_key, config.openai_model, config.prompts_dir, config.base_dir / "viewpoints.json")
     wp_client = WPClient(config.wp_base_url, config.wp_username, config.wp_app_password)
-    renderer = Renderer(config.base_dir / "templates")
+    renderer = Renderer(config.base_dir / "layout_premium")
     dedupe_key = resolved_subdomain or "default"
     dedupe_store = DedupeStore(config.data_dir / f"posted_{dedupe_key}.sqlite3")
     image_tools = ImageTools()
@@ -171,29 +176,54 @@ def main():
     
     page = 0
     max_fetch_pages = max(args.fetch_max_pages, 1)
-    while len(all_items) < candidate_pool_size and page < max_fetch_pages:
-        batch = fanza_client.fetch(
-            limit=100,
-            since=args.since,
-            sort=args.sort,
-            keyword=site_keywords,
-            offset=page * 100,
-        )
-        if not batch:
-            break
-        for item in batch:
-            pid = item['product_id']
-            pid_norm = str(pid).lower()
-            if pid_norm in seen_pids:
-                continue
-            seen_pids.add(pid_norm)
-            
-            if not dedupe_store.is_posted(pid_norm):
-                all_items.append(item)
-            
-            if len(all_items) >= candidate_pool_size: break
-        page += 1
-    
+    if keyword_list:
+        for kw in keyword_list:
+            page = 0
+            while len(all_items) < candidate_pool_size and page < max_fetch_pages:
+                batch = fanza_client.fetch(
+                    limit=100,
+                    since=args.since,
+                    sort=args.sort,
+                    keyword=kw,
+                    offset=page * 100,
+                )
+                if not batch:
+                    break
+                for item in batch:
+                    pid = item['product_id']
+                    pid_norm = str(pid).lower()
+                    if pid_norm in seen_pids:
+                        continue
+                    seen_pids.add(pid_norm)
+                    if not dedupe_store.is_posted(pid_norm):
+                        all_items.append(item)
+                    if len(all_items) >= candidate_pool_size:
+                        break
+                page += 1
+            if len(all_items) >= candidate_pool_size:
+                break
+    else:
+        while len(all_items) < candidate_pool_size and page < max_fetch_pages:
+            batch = fanza_client.fetch(
+                limit=100,
+                since=args.since,
+                sort=args.sort,
+                keyword=site_keywords,
+                offset=page * 100,
+            )
+            if not batch:
+                break
+            for item in batch:
+                pid = item['product_id']
+                pid_norm = str(pid).lower()
+                if pid_norm in seen_pids:
+                    continue
+                seen_pids.add(pid_norm)
+                if not dedupe_store.is_posted(pid_norm):
+                    all_items.append(item)
+                if len(all_items) >= candidate_pool_size:
+                    break
+            page += 1
     random.shuffle(all_items)
     items = all_items[:target_count]
     logger.info(f"処理対象: {len(items)}件 (候補プール: {len(all_items)}件からランダム選定)")
