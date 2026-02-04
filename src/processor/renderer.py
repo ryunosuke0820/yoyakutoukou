@@ -1,4 +1,5 @@
 import json
+import re
 import logging
 from pathlib import Path
 from typing import Any
@@ -165,6 +166,7 @@ class Renderer:
         
         # テンプレート読み込み
         self._hero_template = self._load_template("hero.html")
+        self._hero_template_sd03 = self._load_template("hero_sd03.html")
         self._scene_template = self._load_template("scene.html")
         self._rating_template = self._load_template("rating.html")
         self._summary_template = self._load_template("summary.html")
@@ -289,23 +291,26 @@ class Renderer:
         product_id: str,
         aff_url: str,
         cta_label_primary: str | None = None,
+        cta_subline_1: str | None = None,
+        cta_subline_2: str | None = None,
         external_link_label: str = "DMMで詳細を見る",
+        site_id: str = "default",
     ) -> str:
-        """Heroセクションをレンダリング"""
-        html = self._hero_template
+        """Hero????????????"""
+        html = self._hero_template_sd03 if site_id == "sd03-gyaru" and self._hero_template_sd03 else self._hero_template
         html = html.replace("{EYECATCH_URL}", package_image_url)
         html = html.replace("{TITLE}", title)
         html = html.replace("{SHORT_DESCRIPTION}", short_description)
         html = html.replace("{HIGHLIGHT_1}", highlights[0] if len(highlights) > 0 else "")
         html = html.replace("{HIGHLIGHT_2}", highlights[1] if len(highlights) > 1 else "")
         html = html.replace("{HIGHLIGHT_3}", highlights[2] if len(highlights) > 2 else "")
-        
+
         # Meters
         html = html.replace("{METER_LABEL_TEMPO}", "テンポ")
         html = html.replace("{METER_TEMPO_LEVEL}", str(meters.get("tempo_level", 3)))
         html = html.replace("{METER_LABEL_VOLUME}", "ボリューム")
         html = html.replace("{METER_VOLUME_LEVEL}", str(meters.get("volume_level", 3)))
-        
+
         # Labels/Notes
         html = html.replace("{EXTERNAL_LINK_LABEL}", external_link_label)
         html = html.replace("{NOTICE_18}", "")
@@ -313,13 +318,13 @@ class Renderer:
         default_cta = "今すぐ作品をチェックする"
         html = html.replace("{CTA_BUTTON_LABEL_TOP}", cta_label_primary or default_cta)
         html = html.replace("{CTA_URL_TOP}", aff_url)
-        html = html.replace("{CTA_SUBLINE_1}", "会員登録なしですぐにデモ視聴可能")
-        html = html.replace("{CTA_SUBLINE_2}", "安心の公式リンク（DMM.co.jp）")
+        html = html.replace("{CTA_SUBLINE_1}", cta_subline_1 if cta_subline_1 is not None else "会員登録なしですぐにデモ視聴可能")
+        html = html.replace("{CTA_SUBLINE_2}", cta_subline_2 if cta_subline_2 is not None else "安心の公式リンク（DMM.co.jp）")
         html = html.replace("{EXTERNAL_LINK_LINE}", f"※{external_link_label}へ移動します")
-        
+
         # Placeholder for visual
         html = html.replace("{EYECATCH_PLACEHOLDER}", "")
-        
+
         return html
     
     def render_spec(self, item: dict, site_id: str = "default") -> str:
@@ -441,8 +446,22 @@ class Renderer:
   </div>
         ''')
         # Sticky CTA disabled (requested)
-        
         # 2. Hero (A)
+        hero_cta_label = cta_primary
+        hero_subline_1 = None
+        hero_subline_2 = None
+        hero_external_label = None
+        cta_note_3 = None
+        cta_external_line = None
+        if site_id == "sd03-gyaru":
+            hero_cta_label = "今すぐ無料サンプルを見る"
+            hero_subline_1 = "※会員登録なし / 安心の公式DMMリンク"
+            hero_subline_2 = ""
+            hero_external_label = "DMM.co.jp（公式）"
+            cta_primary = "今すぐこの快楽を本編で堪能する"
+            cta_note_3 = "※DMM.co.jp（公式）へ移動します"
+            cta_external_line = ""
+
         hero_html = self.render_hero(
             package_image_url=item.get("package_image_url", ""),
             title=item.get("title", ""),
@@ -451,7 +470,11 @@ class Renderer:
             meters=ai_response.get("meters", {}),
             product_id=item.get("product_id", ""),
             aff_url=item.get("affiliate_url", ""),
-            cta_label_primary=cta_primary,
+            cta_label_primary=hero_cta_label,
+            cta_subline_1=hero_subline_1,
+            cta_subline_2=hero_subline_2,
+            external_link_label=hero_external_label or "DMMで詳細を見る",
+            site_id=site_id,
         )
         parts.append(hero_html)
         
@@ -467,10 +490,17 @@ class Renderer:
         parts.append(self.render_video(item.get("sample_movie_url", "")))
 
         # 5. Final CTA (move under sample video)
-        parts.append(self.render_cta_final(item.get("affiliate_url", ""), cta_label_primary=cta_primary))
+        parts.append(self.render_cta_final(
+            item.get("affiliate_url", ""),
+            cta_label_primary=cta_primary,
+            cta_note_3=cta_note_3,
+            external_link_line=cta_external_line,
+        ))
 
         # 6. Spec (B)
         parts.append(self.render_spec(item, site_id=site_id))
+        if site_id == "sd03-gyaru":
+            parts.append(self.render_meters_section(ai_response.get("meters", {})))
 
         related_posts = related_posts or []
         if related_posts:
@@ -512,16 +542,54 @@ class Renderer:
         html = html.replace("{EXTERNAL_LINK_LINE}", "※DMM.co.jp（公式）へ移動します")
         return html
 
-    def render_cta_final(self, aff_url: str, cta_label_primary: str | None = None) -> str:
+    def render_cta_final(
+        self,
+        aff_url: str,
+        cta_label_primary: str | None = None,
+        cta_note_1: str | None = None,
+        cta_note_2: str | None = None,
+        cta_note_3: str | None = None,
+        external_link_line: str | None = None,
+    ) -> str:
         """最終CTA (I) をレンダリング"""
         html = self._load_template("cta_bottom.html")
         html = html.replace("{CTA_URL_FINAL}", aff_url)
         default_cta = "今すぐこの快楽を本編で堪能する"
         html = html.replace("{CTA_BUTTON_LABEL_FINAL}", cta_label_primary or default_cta)
-        html = html.replace("{CTA_FINAL_NOTE_1}", "DMMなら最高画質ですぐに視聴開始")
-        html = html.replace("{CTA_FINAL_NOTE_2}", "※18歳未満は閲覧できません")
-        html = html.replace("{EXTERNAL_LINK_LINE}", "※DMM.co.jp（公式）へ移動します")
+        html = html.replace("{CTA_FINAL_NOTE_1}", cta_note_1 or "DMMなら最高画質ですぐに視聴開始")
+        html = html.replace("{CTA_FINAL_NOTE_2}", cta_note_2 or "※18歳未満は閲覧できません")
+        html = html.replace("{CTA_FINAL_NOTE_3}", cta_note_3 or "")
+        if not cta_note_3:
+            html = re.sub(r"\n\s*<div class=\"aa-note-line\">\s*</div>", "", html)
+        html = html.replace(
+            "{EXTERNAL_LINK_LINE}",
+            external_link_line if external_link_line is not None else "※DMM.co.jp（公式）へ移動します",
+        )
+        if external_link_line == "":
+            html = re.sub(r"\n\s*<div class=\"aa-extline\">\s*</div>", "", html)
         return html
+
+    def render_meters_section(self, meters: dict) -> str:
+        level = meters.get("tempo_level", 3)
+        return f"""
+<section class="aa-card aa-meters-card" aria-label="excitement meters">
+  <div class="aa-section-head">
+    <h2 class="aa-h2">興奮度ゲージ</h2>
+    <span class="aa-muted">作品の勢い目安</span>
+  </div>
+  <div class="aa-meters">
+    <div class="aa-meter">
+      <div class="aa-meter-label">テンポ</div>
+      <div class="aa-meter-dots" data-level="{level}" aria-label="テンポ {level}">
+        <span class="aa-dot"></span><span class="aa-dot"></span><span class="aa-dot"></span><span class="aa-dot"></span><span class="aa-dot"></span>
+      </div>
+    </div>
+    <div class="aa-meter">
+      <span class="aa-badge aa-badge-18">18+</span>
+    </div>
+  </div>
+</section>
+        """
 
     def render_sticky_cta(self, aff_url: str, label: str, sticky_cfg: dict, site_id: str) -> str:
         show_after = sticky_cfg.get("showAfterScrollPct", 40)
