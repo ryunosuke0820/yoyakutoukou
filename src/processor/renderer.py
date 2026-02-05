@@ -498,7 +498,7 @@ class Renderer:
         ))
         # 6. Spec (B)
         parts.append(self.render_spec(item, site_id=site_id))
-        if site_id.startswith("sd"):
+        if site_id == "sd03-gyaru":
             parts.append(self.render_meters_section(ai_response.get("meters", {})))
 
         related_posts = related_posts or []
