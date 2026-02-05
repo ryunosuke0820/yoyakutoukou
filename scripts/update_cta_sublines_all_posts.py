@@ -22,7 +22,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(mes
 logger = logging.getLogger(__name__)
 
 REQUEST_TIMEOUT = 60
-MAX_RETRIES = 3
+MAX_RETRIES = 5
+RETRY_STATUSES = {429, 500, 502, 503, 504}
 
 NEW_SUBLINE_1 = (
     "\u203b\u672c\u30da\u30fc\u30b8\u306f\u6210\u4eba\u5411\u3051\u5185\u5bb9\u3092\u542b\u307f\u307e\u3059\u3002"
@@ -51,14 +52,24 @@ def _replace_subcard(content: str) -> str | None:
 
 def _request_with_retry(method: str, url: str, session: requests.Session, **kwargs) -> requests.Response:
     last_exc: Exception | None = None
+    last_res: requests.Response | None = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             res = session.request(method, url, timeout=REQUEST_TIMEOUT, **kwargs)
+            if res.status_code in RETRY_STATUSES:
+                last_res = res
+                logger.warning(
+                    f"{method} {url} returned {res.status_code} (attempt {attempt}/{MAX_RETRIES})"
+                )
+                time.sleep(2.0 * attempt)
+                continue
             return res
         except Exception as exc:
             last_exc = exc
             logger.warning(f"{method} {url} failed (attempt {attempt}/{MAX_RETRIES}): {exc}")
             time.sleep(1.0 * attempt)
+    if last_res is not None:
+        return last_res
     if last_exc:
         raise last_exc
     raise RuntimeError("request failed")
