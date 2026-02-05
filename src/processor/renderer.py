@@ -296,8 +296,8 @@ class Renderer:
         external_link_label: str = "DMMで詳細を見る",
         site_id: str = "default",
     ) -> str:
-        """Hero????????????"""
-        html = self._hero_template_sd03 if site_id == "sd03-gyaru" and self._hero_template_sd03 else self._hero_template
+        """Heroセクションをレンダリング"""
+        html = self._hero_template_sd03 if site_id.startswith("sd") and self._hero_template_sd03 else self._hero_template
         html = html.replace("{EYECATCH_URL}", package_image_url)
         html = html.replace("{TITLE}", title)
         html = html.replace("{SHORT_DESCRIPTION}", short_description)
@@ -453,7 +453,7 @@ class Renderer:
         hero_external_label = None
         cta_note_3 = None
         cta_external_line = None
-        if site_id == "sd03-gyaru":
+        if site_id.startswith("sd"):
             hero_cta_label = "今すぐ無料サンプルを見る"
             hero_subline_1 = "※会員登録なし / 安心の公式DMMリンク"
             hero_subline_2 = ""
@@ -496,9 +496,10 @@ class Renderer:
             cta_note_3=cta_note_3,
             external_link_line=cta_external_line,
         ))
-
         # 6. Spec (B)
         parts.append(self.render_spec(item, site_id=site_id))
+        if site_id.startswith("sd"):
+            parts.append(self.render_meters_section(ai_response.get("meters", {})))
 
         related_posts = related_posts or []
         if related_posts:
