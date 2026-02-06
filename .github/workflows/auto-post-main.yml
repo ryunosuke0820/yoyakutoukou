@@ -36,12 +36,53 @@ jobs:
 
       - name: Create .env file for main site
         run: |
+          WP_USER="${{ secrets.WP_USERNAME_MAIN }}"
+          if [ -z "$WP_USER" ]; then WP_USER="${{ secrets.WP_USERNAME }}"; fi
+          WP_PASS="${{ secrets.WP_APP_PASSWORD_MAIN }}"
+          if [ -z "$WP_PASS" ]; then WP_PASS="${{ secrets.WP_APP_PASSWORD }}"; fi
+
           echo "FANZA_API_KEY=${{ secrets.FANZA_API_KEY }}" >> .env
           echo "FANZA_AFFILIATE_ID=${{ secrets.FANZA_AFFILIATE_ID }}" >> .env
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
           echo "WP_BASE_URL=https://av-kantei.com" >> .env
-          echo "WP_USERNAME=${{ secrets.WP_USERNAME }}" >> .env
-          echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD }}" >> .env
+          echo "WP_USERNAME=$WP_USER" >> .env
+          echo "WP_APP_PASSWORD=$WP_PASS" >> .env
+
+      - name: Verify WordPress auth/role
+        run: |
+          python - << 'PY'
+          import base64
+          import os
+          import requests
+          from dotenv import load_dotenv
+
+          load_dotenv(".env")
+          base = os.getenv("WP_BASE_URL", "").rstrip("/")
+          user = os.getenv("WP_USERNAME", "")
+          app = os.getenv("WP_APP_PASSWORD", "")
+          token = base64.b64encode(f"{user}:{app}".encode()).decode()
+          headers = {"Authorization": f"Basic {token}"}
+
+          me = requests.get(f"{base}/wp-json/wp/v2/users/me", headers=headers, timeout=20)
+          if me.status_code != 200:
+              print("WP auth failed:", me.status_code, me.text[:500])
+              raise SystemExit(1)
+
+          media = requests.post(
+              f"{base}/wp-json/wp/v2/media",
+              headers={**headers, "Content-Type": "image/gif", "Content-Disposition": "attachment; filename=probe.gif"},
+              data=b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;",
+              timeout=20,
+          )
+          if media.status_code not in (201,):
+              print("WP media permission failed:", media.status_code, media.text[:500])
+              raise SystemExit(1)
+
+          mid = media.json().get("id")
+          if mid:
+              requests.delete(f"{base}/wp-json/wp/v2/media/{mid}", params={"force": "true"}, headers=headers, timeout=20)
+          print("WP auth/role OK")
+          PY
 
       - name: Run FANZA Bot (main site)
         run: |
