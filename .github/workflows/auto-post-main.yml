@@ -53,6 +53,11 @@ jobs:
             echo "Missing WP credentials. Set WP_USERNAME_MAIN / WP_APP_PASSWORD_MAIN (or fallback WP_USERNAME / WP_APP_PASSWORD)." >&2
             exit 1
           fi
+          # WordPress Application Password is often displayed with spaces.
+          # Normalize to raw token form before writing .env.
+          WP_PASS_RAW_LEN=${#WP_PASS}
+          WP_PASS="$(printf '%s' "$WP_PASS" | tr -d '[:space:]')"
+          WP_PASS_CLEAN_LEN=${#WP_PASS}
 
           echo "FANZA_API_KEY=${{ secrets.FANZA_API_KEY }}" >> .env
           echo "FANZA_AFFILIATE_ID=${{ secrets.FANZA_AFFILIATE_ID }}" >> .env
@@ -62,12 +67,12 @@ jobs:
           echo "WP_APP_PASSWORD=$WP_PASS" >> .env
           echo "Using secrets: user=$USER_SRC pass=$PASS_SRC"
           echo "Username length: ${#WP_USER}"
-          echo "Password length: ${#WP_PASS}"
+          echo "Password length(raw): ${WP_PASS_RAW_LEN}"
+          echo "Password length(clean): ${WP_PASS_CLEAN_LEN}"
 
       - name: Verify WordPress auth/role
         run: |
           python - << 'PY'
-          import base64
           import os
           import requests
           from dotenv import load_dotenv
@@ -76,17 +81,17 @@ jobs:
           base = os.getenv("WP_BASE_URL", "").rstrip("/")
           user = os.getenv("WP_USERNAME", "")
           app = os.getenv("WP_APP_PASSWORD", "")
-          token = base64.b64encode(f"{user}:{app}".encode()).decode()
-          headers = {"Authorization": f"Basic {token}"}
+          auth = (user, app)
 
-          me = requests.get(f"{base}/wp-json/wp/v2/users/me", headers=headers, timeout=20)
+          me = requests.get(f"{base}/wp-json/wp/v2/users/me", auth=auth, timeout=20)
           if me.status_code != 200:
               print("WP auth failed:", me.status_code, me.text[:500])
               raise SystemExit(1)
 
           media = requests.post(
               f"{base}/wp-json/wp/v2/media",
-              headers={**headers, "Content-Type": "image/gif", "Content-Disposition": "attachment; filename=probe.gif"},
+              auth=auth,
+              headers={"Content-Type": "image/gif", "Content-Disposition": "attachment; filename=probe.gif"},
               data=b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;",
               timeout=20,
           )
@@ -96,7 +101,7 @@ jobs:
 
           mid = media.json().get("id")
           if mid:
-              requests.delete(f"{base}/wp-json/wp/v2/media/{mid}", params={"force": "true"}, headers=headers, timeout=20)
+              requests.delete(f"{base}/wp-json/wp/v2/media/{mid}", params={"force": "true"}, auth=auth, timeout=20)
           print("WP auth/role OK")
           PY
 
