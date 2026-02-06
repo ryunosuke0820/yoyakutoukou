@@ -37,9 +37,22 @@ jobs:
       - name: Create .env file for main site
         run: |
           WP_USER="${{ secrets.WP_USERNAME_MAIN }}"
-          if [ -z "$WP_USER" ]; then WP_USER="${{ secrets.WP_USERNAME }}"; fi
+          USER_SRC="WP_USERNAME_MAIN"
+          if [ -z "$WP_USER" ]; then
+            WP_USER="${{ secrets.WP_USERNAME }}"
+            USER_SRC="WP_USERNAME"
+          fi
           WP_PASS="${{ secrets.WP_APP_PASSWORD_MAIN }}"
-          if [ -z "$WP_PASS" ]; then WP_PASS="${{ secrets.WP_APP_PASSWORD }}"; fi
+          PASS_SRC="WP_APP_PASSWORD_MAIN"
+          if [ -z "$WP_PASS" ]; then
+            WP_PASS="${{ secrets.WP_APP_PASSWORD }}"
+            PASS_SRC="WP_APP_PASSWORD"
+          fi
+
+          if [ -z "$WP_USER" ] || [ -z "$WP_PASS" ]; then
+            echo "Missing WP credentials. Set WP_USERNAME_MAIN / WP_APP_PASSWORD_MAIN (or fallback WP_USERNAME / WP_APP_PASSWORD)." >&2
+            exit 1
+          fi
 
           echo "FANZA_API_KEY=${{ secrets.FANZA_API_KEY }}" >> .env
           echo "FANZA_AFFILIATE_ID=${{ secrets.FANZA_AFFILIATE_ID }}" >> .env
@@ -47,6 +60,9 @@ jobs:
           echo "WP_BASE_URL=https://av-kantei.com" >> .env
           echo "WP_USERNAME=$WP_USER" >> .env
           echo "WP_APP_PASSWORD=$WP_PASS" >> .env
+          echo "Using secrets: user=$USER_SRC pass=$PASS_SRC"
+          echo "Username length: ${#WP_USER}"
+          echo "Password length: ${#WP_PASS}"
 
       - name: Verify WordPress auth/role
         run: |
