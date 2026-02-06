@@ -104,6 +104,7 @@ def main():
     parser.add_argument("--sort", type=str, default="date")
     parser.add_argument("--since", type=str)
     parser.add_argument("--subdomain", type=str, help="対象のサブドメイン (例: sd01-chichi)")
+    parser.add_argument("--dedupe-key", type=str, default="", help="投稿済みDBキーを明示指定 (例: main)")
     parser.add_argument("--sync-full", action="store_true", help="WP投稿キャッシュを全件同期")
     parser.add_argument("--sync-overlap-hours", type=int, default=6)
     parser.add_argument("--sync-max-pages", type=int, default=0, help="WP同期の最大ページ(0で無制限)")
@@ -118,6 +119,7 @@ def main():
     # サブドメイン指定がある場合、設定を上書き
     site_keywords = None
     keyword_list: list[str] | None = None
+    site_info = None
     resolved_subdomain = args.subdomain
     if args.subdomain:
         subdomain_alias = {
@@ -148,7 +150,7 @@ def main():
     llm_client = OpenAIClient(config.openai_api_key, config.openai_model, config.prompts_dir, config.base_dir / "viewpoints.json")
     wp_client = WPClient(config.wp_base_url, config.wp_username, config.wp_app_password)
     renderer = Renderer(config.base_dir / "layout_premium")
-    dedupe_key = resolved_subdomain or "default"
+    dedupe_key = args.dedupe_key.strip() or resolved_subdomain or "default"
     dedupe_store = DedupeStore(config.data_dir / f"posted_{dedupe_key}.sqlite3")
     image_tools = ImageTools()
     

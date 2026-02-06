@@ -1,0 +1,58 @@
+name: FANZA Auto Post (Main Site)
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "1回あたりの投稿数"
+        required: false
+        default: "5"
+  schedule:
+    - cron: "0 0 * * *"    # JST 09:00
+    - cron: "30 2 * * *"   # JST 11:30
+    - cron: "0 6 * * *"    # JST 15:00
+    - cron: "0 12 * * *"   # JST 21:00
+
+jobs:
+  post-main:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Create .env file for main site
+        run: |
+          echo "FANZA_API_KEY=${{ secrets.FANZA_API_KEY }}" >> .env
+          echo "FANZA_AFFILIATE_ID=${{ secrets.FANZA_AFFILIATE_ID }}" >> .env
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+          echo "WP_BASE_URL=https://av-kantei.com" >> .env
+          echo "WP_USERNAME=${{ secrets.WP_USERNAME }}" >> .env
+          echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD }}" >> .env
+
+      - name: Run FANZA Bot (main site)
+        run: |
+          LIMIT="${{ github.event.inputs.limit }}"
+          python scripts/run_batch.py --limit ${LIMIT:-5} --dedupe-key main
+
+      - name: Commit posted database
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase || true
+          git add data/posted_main.sqlite3 || true
+          git diff --staged --quiet || git commit -m "chore: update posted_main.sqlite3"
+          git push || true
