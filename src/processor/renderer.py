@@ -4,6 +4,7 @@ import logging
 import html
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs, quote_plus, urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,39 @@ class Renderer:
         "light": "0 6px 16px rgba(0, 0, 0, .12)",
         "medium": "0 10px 22px rgba(0, 0, 0, .20)",
         "none": "none",
+    }
+    _SD_HERO_CALLOUT_MAP = {
+        "sd01-chichi": ("⚠ 乳感と密着の没入を楽しみたい夜に", "柔らかさや距離の近さを重視して選びたいときに相性が良いタイプです。"),
+        "sd02-shirouto": ("⚠ リアル寄りの空気感を味わいたい夜に", "作り込みより生っぽさを楽しみたい人向けのテイストです。"),
+        "sd03-gyaru": ("⚠ ギャルのノリと勢いで抜きたい人専用", "丁寧・純愛系を求める人には向きません。"),
+        "sd04-chijo": ("⚠ 主導権を握られる熱量を求める夜に", "受け身で甘めの展開より、攻めの濃さを楽しみたい人向けです。"),
+        "sd05-seiso": ("⚠ 清楚さとギャップの破壊力を味わいたい夜に", "落ち着いた雰囲気から崩れる瞬間を楽しみたい人向けです。"),
+        "sd06-hitozuma": ("⚠ 人妻の背徳感と生活感を楽しみたい夜に", "軽さよりも情緒と関係性の濃さを求める人向けです。"),
+        "sd07-oneesan": ("⚠ お姉さんの包容力と余裕を浴びたい夜に", "幼さより大人の安心感や上品な色気を重視する人向けです。"),
+        "sd08-jukujo": ("⚠ 熟女の深みと落ち着きを味わいたい夜に", "フレッシュさより、経験値のある色気を求める人に刺さります。"),
+        "sd09-iyashi": ("⚠ 癒しとやさしさで満たされたい夜に", "激しさより、穏やかな密度を求める人向けの一本です。"),
+        "sd10-otona": ("⚠ 洗練された大人の色気に浸りたい夜に", "派手さより、余裕と上質な空気感を重視する人向けです。"),
+    }
+    _SD_SITE_ID_ALIASES = {
+        "sd1": "sd01-chichi",
+        "sd01": "sd01-chichi",
+        "sd2": "sd02-shirouto",
+        "sd02": "sd02-shirouto",
+        "sd3": "sd03-gyaru",
+        "sd03": "sd03-gyaru",
+        "sd4": "sd04-chijo",
+        "sd04": "sd04-chijo",
+        "sd5": "sd05-seiso",
+        "sd05": "sd05-seiso",
+        "sd6": "sd06-hitozuma",
+        "sd06": "sd06-hitozuma",
+        "sd7": "sd07-oneesan",
+        "sd07": "sd07-oneesan",
+        "sd8": "sd08-jukujo",
+        "sd08": "sd08-jukujo",
+        "sd9": "sd09-iyashi",
+        "sd09": "sd09-iyashi",
+        "sd10": "sd10-otona",
     }
 
     _STICKY_SCRIPT = """<script>
@@ -209,9 +243,92 @@ class Renderer:
             return {}
 
     def _get_site_decor(self, site_id: str) -> dict:
-        if not site_id:
+        normalized_site_id = self._normalize_site_id(site_id)
+        if not normalized_site_id:
             return self._site_decor.get("_default", {})
-        return self._site_decor.get(site_id, self._site_decor.get("_default", {}))
+        return self._site_decor.get(normalized_site_id, self._site_decor.get("_default", {}))
+
+    def _normalize_site_id(self, site_id: str) -> str:
+        normalized = str(site_id or "").strip().lower()
+        if not normalized:
+            return "default"
+        if normalized in ("default", "main"):
+            return normalized
+        if normalized in self._SD_SITE_ID_ALIASES:
+            return self._SD_SITE_ID_ALIASES[normalized]
+        if normalized.startswith("sd"):
+            prefix = normalized.split("-", 1)[0]
+            if prefix in self._SD_SITE_ID_ALIASES:
+                return self._SD_SITE_ID_ALIASES[prefix]
+        return normalized
+
+    def _build_internal_search_url(self, keyword: str) -> str:
+        return f"/?s={quote_plus(keyword.strip())}"
+
+    def _link_to_internal_search(self, label: str) -> str:
+        keyword = str(label or "").strip()
+        if not keyword:
+            return "N/A"
+        href = self._escape(self._build_internal_search_url(keyword))
+        return f'<a class="aa-spec-link" href="{href}">{self._escape(keyword)}</a>'
+
+    def _render_spec_people_links(self, names: list[str]) -> str:
+        unique_names: list[str] = []
+        seen: set[str] = set()
+        for name in names or []:
+            val = str(name or "").strip()
+            if not val:
+                continue
+            key = val.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            unique_names.append(val)
+        if not unique_names:
+            return "N/A"
+        return " / ".join(self._link_to_internal_search(name) for name in unique_names)
+
+    def _resolve_product_id(self, item: dict) -> str:
+        direct_candidates = [
+            item.get("product_id"),
+            item.get("content_id"),
+            item.get("fanza_product_id"),
+            item.get("cid"),
+        ]
+        for candidate in direct_candidates:
+            text = str(candidate or "").strip()
+            if text and text.lower() not in {"none", "n/a"}:
+                return text
+
+        affiliate_url = str(item.get("affiliate_url") or "").strip()
+        if affiliate_url:
+            parsed = urlparse(affiliate_url)
+            query = parse_qs(parsed.query)
+            for key in ("cid", "product_id", "id"):
+                values = query.get(key, [])
+                if values and str(values[0]).strip():
+                    return str(values[0]).strip()
+
+            nested_urls = query.get("lurl", []) + query.get("url", [])
+            for nested_url in nested_urls:
+                nested = str(nested_url or "").strip()
+                if not nested:
+                    continue
+                nested_parsed = urlparse(nested)
+                nested_query = parse_qs(nested_parsed.query)
+                for key in ("cid", "product_id", "id"):
+                    values = nested_query.get(key, [])
+                    if values and str(values[0]).strip():
+                        return str(values[0]).strip()
+                nested_path_match = re.search(r"/cid=([^/?&#]+)", nested, re.IGNORECASE)
+                if nested_path_match and nested_path_match.group(1).strip():
+                    return nested_path_match.group(1).strip()
+
+            path_match = re.search(r"/cid=([^/?&#]+)", affiliate_url, re.IGNORECASE)
+            if path_match and path_match.group(1).strip():
+                return path_match.group(1).strip()
+
+        return "N/A"
 
     def _build_wrap_attrs(self, site_id: str) -> tuple[str, str]:
         decor = self._get_site_decor(site_id)
@@ -298,13 +415,20 @@ class Renderer:
         site_id: str = "default",
     ) -> str:
         """Heroセクションをレンダリング"""
-        html = self._hero_template_sd03 if site_id.startswith("sd") and self._hero_template_sd03 else self._hero_template
+        normalized_site_id = self._normalize_site_id(site_id)
+        html = self._hero_template_sd03 if normalized_site_id.startswith("sd") and self._hero_template_sd03 else self._hero_template
         html = html.replace("{EYECATCH_URL}", package_image_url)
         html = html.replace("{TITLE}", title)
         html = html.replace("{SHORT_DESCRIPTION}", short_description)
         html = html.replace("{HIGHLIGHT_1}", highlights[0] if len(highlights) > 0 else "")
         html = html.replace("{HIGHLIGHT_2}", highlights[1] if len(highlights) > 1 else "")
         html = html.replace("{HIGHLIGHT_3}", highlights[2] if len(highlights) > 2 else "")
+        callout_title, callout_body = self._SD_HERO_CALLOUT_MAP.get(
+            normalized_site_id,
+            ("\u26a0 \u4f5c\u54c1\u306e\u50be\u5411\u304c\u523a\u3055\u308b\u4eba\u5411\u3051", "\u597d\u307f\u3068\u9055\u3046\u5834\u5408\u306f\u30ea\u30f3\u30af\u5148\u306e\u8a73\u7d30\u60c5\u5831\u3082\u78ba\u8a8d\u3057\u3066\u304f\u3060\u3055\u3044\u3002"),
+        )
+        html = html.replace("{HERO_CALLOUT_TITLE}", callout_title)
+        html = html.replace("{HERO_CALLOUT_BODY}", callout_body)
 
         # Meters
         html = html.replace("{METER_LABEL_TEMPO}", "テンポ")
@@ -330,6 +454,7 @@ class Renderer:
     
     def render_spec(self, item: dict, site_id: str = "default") -> str:
         """作品スペックセクションをレンダリング"""
+        site_id = self._normalize_site_id(site_id)
         html = self._load_template("spec.html")
         
         spec_title = "作品詳細スペック"
@@ -340,11 +465,16 @@ class Renderer:
         html = html.replace("{SPEC_TOGGLE_HINT}", "クリックで詳細を表示")
         
         labels = ["配信開始日", "出演者", "メーカー", "品番"]
+        release_date = str(item.get("release_date", "") or "").strip() or "N/A"
+        actress_links = self._render_spec_people_links(item.get("actress", []) or [])
+        maker_name = str(item.get("maker", "") or "").strip()
+        maker_link = self._link_to_internal_search(maker_name) if maker_name else "N/A"
+        product_id = self._resolve_product_id(item)
         values = [
-            item.get("release_date", "N/A"),
-            ", ".join(item.get("actress", [])) if item.get("actress") else "N/A",
-            item.get("maker", "N/A"),
-            item.get("product_id", "N/A"),
+            self._escape(release_date),
+            actress_links,
+            maker_link,
+            self._escape(product_id),
         ]
         
         for i in range(4):
@@ -498,7 +628,7 @@ class Renderer:
         <h1 class="main-kantei-title">{title}</h1>
         <p class="main-kantei-lead">今、どれや？迷ってるなら、先に状況で決めたらええ。</p>
       </div>
-      <img class="main-kantei-thumb" src="{package_image}" alt="{title}" loading="lazy" />
+      <img class="main-kantei-thumb" src="{package_image}" alt="{title}" loading="eager" decoding="async" fetchpriority="high" />
     </div>
   </article>
 
@@ -573,9 +703,11 @@ class Renderer:
         related_posts: list[dict] | None = None,
     ) -> str:
         """投稿本文全体を生成"""
+        site_id = self._normalize_site_id(site_id)
         if site_id == "main":
             return self._render_post_content_main(item, ai_response, related_posts=related_posts)
         parts = []
+        is_sd_site = site_id.startswith("sd")
         
         # 全体をSITE_IDでラップ
         site_decor = self._get_site_decor(site_id)
@@ -602,7 +734,7 @@ class Renderer:
         hero_external_label = None
         cta_note_3 = None
         cta_external_line = None
-        if site_id.startswith("sd"):
+        if is_sd_site:
             hero_cta_label = "今すぐ無料サンプルを見る"
             hero_subline_1 = "※本ページは成人向け内容を含みます。18歳未満の方は閲覧できません。"
             hero_subline_2 = "※当サイトはアフィリエイト広告を利用しています。"
@@ -626,6 +758,10 @@ class Renderer:
             site_id=site_id,
         )
         parts.append(hero_html)
+
+        # SD系はヒーロー直下にスペックを配置（タイトル下の3行は非表示化）
+        if is_sd_site:
+            parts.append(self.render_spec(item, site_id=site_id))
         
         # 3. Features (C: Highlights x3)
         sample_urls = item.get("sample_image_urls", [])
@@ -645,8 +781,9 @@ class Renderer:
             cta_note_3=cta_note_3,
             external_link_line=cta_external_line,
         ))
-        # 6. Spec (B)
-        parts.append(self.render_spec(item, site_id=site_id))
+        # 6. Spec (B) - SDはヒーロー直下に移動済み
+        if not is_sd_site:
+            parts.append(self.render_spec(item, site_id=site_id))
 
         related_posts = related_posts or []
         if related_posts:

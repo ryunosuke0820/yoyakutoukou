@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import io
 import logging
+import os
 import re
 import sys
 from pathlib import Path
@@ -19,7 +20,7 @@ sys.path.append(str(project_root))
 
 from src.core.config import get_config
 from src.clients.wordpress import WPClient
-from scripts.configure_sites import SITES
+from scripts.configure_sites import SITES, WP_APP_PASSWORD as DEFAULT_WP_APP_PASSWORD, WP_USERNAME as DEFAULT_WP_USERNAME
 
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -128,6 +129,46 @@ def _move_final_cta_below_video(html: str) -> tuple[str, int]:
     return html, 1
 
 
+def _remove_hero_points_and_move_spec_near_hero(html: str) -> tuple[str, int]:
+    updated = 0
+
+    # Remove the old 3-line highlight list below title.
+    html, n1 = re.subn(
+        r'\s*<div class="aa-points" aria-label="highlights">[\s\S]*?</div>\s*',
+        "",
+        html,
+        count=1,
+        flags=re.S,
+    )
+    updated += n1
+
+    # Clean up empty wrapper if present.
+    html, n2 = re.subn(
+        r'\s*<div class="aa-hero-grid">\s*</div>\s*',
+        "",
+        html,
+        count=1,
+        flags=re.S,
+    )
+    updated += n2
+
+    spec_match = re.search(r'<section class="aa-card aa-spec"[\s\S]*?</section>', html, re.S)
+    hero_match = re.search(r'<section class="aa-card aa-hero"[\s\S]*?</section>', html, re.S)
+    if not spec_match or not hero_match:
+        return html, updated
+
+    spec_block = spec_match.group(0)
+    # Move spec block right below hero section.
+    html_without_spec = html[:spec_match.start()] + html[spec_match.end():]
+    insert_at = hero_match.end()
+    # If spec was before hero, account for index shift.
+    if spec_match.start() < hero_match.start():
+        insert_at -= len(spec_block)
+    html = html_without_spec[:insert_at] + "\n\n" + spec_block + "\n\n" + html_without_spec[insert_at:]
+    updated += 1
+    return html, updated
+
+
 def update_content(html: str, site_id: str, primary_label: str, secondary_label: str) -> tuple[str, bool]:
     if "aa-wrap" not in html:
         return html, False
@@ -171,6 +212,10 @@ def update_content(html: str, site_id: str, primary_label: str, secondary_label:
 
     # Move final CTA under sample video if present
     html, n = _move_final_cta_below_video(html)
+    updated |= n > 0
+
+    # Remove 3-line hero highlights and move spec block right below hero
+    html, n = _remove_hero_points_and_move_spec_near_hero(html)
     updated |= n > 0
 
     # Remove duration row from spec table (if present)
@@ -272,6 +317,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="SDサイトの既存記事CTA調整")
     parser.add_argument("--subdomains", type=str, default="all", help="comma-separated, or 'all'")
     parser.add_argument("--max-pages", type=int, default=20)
+    parser.add_argument("--per-page", type=int, default=100, help="posts per page for WP API")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--label-primary", type=str, default="この迫力を確かめる")
     parser.add_argument("--label-secondary", type=str, default="")
@@ -285,11 +331,24 @@ def main() -> None:
         logger.error("対象サブドメインがありません")
         return
 
-    config = get_config()
+    wp_username = ""
+    wp_app_password = ""
+    try:
+        config = get_config()
+        wp_username = config.wp_username
+        wp_app_password = config.wp_app_password
+    except Exception as exc:
+        logger.warning(f"get_config failed, fallback to WP-only credentials: {exc}")
+        wp_username = os.getenv("WP_USERNAME", DEFAULT_WP_USERNAME)
+        wp_app_password = os.getenv("WP_APP_PASSWORD", DEFAULT_WP_APP_PASSWORD)
+
+    if not wp_username or not wp_app_password:
+        logger.error("WP credentials are missing. Set WP_USERNAME/WP_APP_PASSWORD or configure scripts.configure_sites.")
+        return
 
     for subdomain in subdomains:
         base_url = f"https://{subdomain}.av-kantei.com"
-        wp_client = WPClient(base_url, config.wp_username, config.wp_app_password)
+        wp_client = WPClient(base_url, wp_username, wp_app_password)
 
         logger.info(f"対象: {subdomain} ({base_url})")
 
@@ -297,7 +356,7 @@ def main() -> None:
         scanned = 0
         for post in wp_client.iter_posts(
             status="publish",
-            per_page=100,
+            per_page=max(1, min(args.per_page, 100)),
             max_pages=args.max_pages,
             fields="id,content",
             context="edit",

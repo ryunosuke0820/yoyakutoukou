@@ -219,6 +219,17 @@ class WPClient:
             **kwargs,
         )
 
+        # Fallback for sites where /wp-json rewrite is broken.
+        if response.status_code == 404:
+            fallback_url = f"{self.base_url}/?rest_route=/wp/v2/{endpoint.lstrip('/')}"
+            response = self.session.request(
+                method,
+                fallback_url,
+                headers=headers,
+                timeout=self.timeout,
+                **kwargs,
+            )
+
         # エラー詳細調査用ログ
         if response.status_code >= 400:
             logger.error(f"API Error: {method} {url} -> {response.status_code}")

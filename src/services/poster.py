@@ -93,19 +93,35 @@ class PosterService:
             
             # 画像アップロード
             featured_media_id = None
+            package_media_id = None
             use_cdn_images = os.environ.get("USE_CDN_IMAGES", "").lower() == "true"
+            require_featured_media = os.environ.get("REQUIRE_FEATURED_MEDIA", "true").lower() != "false"
             
             if use_cdn_images:
                 logger.info("USE_CDN_IMAGES=true: 画像アップロードをスキップしてCDN URLを直接使用")
                 # パッケージ画像はそのまま (FANZA CDN URL)
                 # シーン画像もそのまま使用
                 item["sample_image_urls"] = scene_image_urls[:3]
+                # アイキャッチ欠損防止のため、最低1枚だけはWPメディアにアップロードしてfeatured_mediaを確保する。
+                if not dry_run and item.get("package_image_url"):
+                    try:
+                        img_bytes, filename, mime_type = self.image_tools.download_to_bytes(item["package_image_url"])
+                        result = self.wp_client.upload_media(file_bytes=img_bytes, filename=filename, mime_type=mime_type)
+                        featured_media_id = result.get("id")
+                        logger.info(f"USE_CDN_IMAGES時のアイキャッチ確保アップロード完了: media_id={featured_media_id}")
+                    except ImagePlaceholderError as e:
+                        logger.warning(f"アイキャッチ用画像が未準備のためスキップ: {e}")
+                        return "skip"
+                    except Exception as e:
+                        logger.error(f"USE_CDN_IMAGES時のアイキャッチ確保アップロード失敗: {e}")
+                item["_featured_media_id"] = featured_media_id
             elif not dry_run:
                 if item.get("package_image_url"):
                     try:
                         img_bytes, filename, mime_type = self.image_tools.download_to_bytes(item["package_image_url"])
                         result = self.wp_client.upload_media(file_bytes=img_bytes, filename=filename, mime_type=mime_type)
                         item["package_image_url"] = result.get("source_url", item["package_image_url"])
+                        package_media_id = result.get("id")
                         logger.info(f"パッケージ画像アップロード完了: {item['package_image_url']}")
                     except ImagePlaceholderError as e:
                         logger.warning(f"画像がまだ準備されていません。スキップ: {e}")
@@ -157,6 +173,14 @@ class PosterService:
                         else:
                             new_sample_urls[res["index"]] = res["url"]
                             logger.info(f"サンプル画像{res['index']+1}アップロード完了")
+
+                # アイキャッチ専用画像のアップロードに失敗した場合は、
+                # 既にアップロード済みのパッケージ画像をフォールバックで利用する。
+                if not featured_media_id and package_media_id:
+                    featured_media_id = package_media_id
+                    logger.warning(
+                        f"アイキャッチ画像IDが未取得のためパッケージ画像を代替利用: media_id={featured_media_id}"
+                    )
 
                 item["sample_image_urls"] = [u for u in new_sample_urls if u is not None]
                 item["_featured_media_id"] = featured_media_id
@@ -256,6 +280,10 @@ body {{ max-width: 800px; margin: 0 auto; padding: 20px; font-family: sans-serif
 
                 self.dedupe_store.record_success(product_id, wp_post_id=None, status="dry_run")
                 return "success"
+
+            # アイキャッチ無し投稿は避ける。取得できなかった場合は投稿を中断する。
+            if require_featured_media and not item.get("_featured_media_id"):
+                raise RuntimeError(f"featured_media未設定のため投稿中断: product_id={product_id}")
             
             # WordPress投稿
             actresses = item.get("actress", [])
