@@ -972,6 +972,22 @@
         box-shadow: 0 12px 26px color-mix(in srgb, var(--aa-cta-accent) 30%, transparent), var(--aa-btn-glow);
     }
 
+    /* Keep CTA colors stable even if theme/plugin styles .aa-btn-primary */
+    body[data-site^="sd"] .aa-cta,
+    body[data-site^="sd"] .aa-cta-final,
+    .aa-wrap[data-site^="sd"] .aa-cta,
+    .aa-wrap[data-site^="sd"] .aa-cta-final {
+        background: var(--aa-card) !important;
+    }
+
+    body[data-site^="sd"] .aa-btn-primary,
+    .aa-wrap[data-site^="sd"] .aa-btn-primary {
+        background: linear-gradient(135deg, var(--aa-cta-accent), var(--aa-cta-accent2)) !important;
+        border-color: transparent !important;
+        color: var(--aa-cta-text) !important;
+        box-shadow: 0 14px 28px color-mix(in srgb, var(--aa-cta-accent) 35%, transparent), var(--aa-btn-glow) !important;
+    }
+
     body[data-site="sd07-oneesan"],
     .aa-wrap[data-site="sd07-oneesan"] {
         --aa-cta-accent: var(--aa-accent);

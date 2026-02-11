@@ -54,6 +54,24 @@ DEFAULT_NORMALIZE_RULES = {
     "title_format": "[{pid}] {title}",
 }
 
+CTA_PRIMARY_FIX_MARKER = "SD CTA primary fix"
+CTA_PRIMARY_FIX_STYLE = """<style>
+/* SD CTA primary fix */
+body[data-site^="sd"] .aa-cta,
+body[data-site^="sd"] .aa-cta-final,
+.aa-wrap[data-site^="sd"] .aa-cta,
+.aa-wrap[data-site^="sd"] .aa-cta-final {
+  background: var(--aa-card) !important;
+}
+body[data-site^="sd"] .aa-btn-primary,
+.aa-wrap[data-site^="sd"] .aa-btn-primary {
+  background: linear-gradient(135deg, var(--aa-cta-accent), var(--aa-cta-accent2)) !important;
+  border-color: transparent !important;
+  color: var(--aa-cta-text) !important;
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--aa-cta-accent) 35%, transparent), var(--aa-btn-glow) !important;
+}
+</style>"""
+
 
 def _required_env(name: str) -> str:
     value = os.getenv(name, "").strip()
@@ -316,6 +334,10 @@ def _normalize_content(raw: str, rules: dict) -> tuple[str, bool]:
             raw = cleaned
         else:
             raw = raw[:stack_match.end()] + "\n  " + midokoro_block + "\n" + raw[stack_match.end():]
+
+    # Ensure CTA primary stays themed (fix for theme/plugin overrides).
+    if CTA_PRIMARY_FIX_MARKER not in raw:
+        raw = raw.rstrip() + "\n\n" + CTA_PRIMARY_FIX_STYLE + "\n"
 
     return raw, raw != original
 
