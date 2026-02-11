@@ -162,10 +162,10 @@ jobs:
           LIMIT="${{ github.event.inputs.limit }}"
           USE_CDN_IMAGES=true REQUIRE_FEATURED_MEDIA=false python scripts/run_batch.py --subdomain ${{ matrix.site }} --limit ${LIMIT:-5}
 
-      - name: Normalize SD01 posts (existing + newly created)
-        if: steps.check.outputs.should_run == 'true' && matrix.site == 'sd01-chichi'
+      - name: Normalize SD posts (lightweight after posting)
+        if: steps.check.outputs.should_run == 'true'
         run: |
-          python scripts/normalize_sd01_posts.py --base-url "https://sd01-chichi.av-kantei.com" --status publish --max-pages 3 --per-page 20
+          python scripts/normalize_sd_posts.py --site-id "${{ matrix.site }}" --base-url "https://${{ matrix.site }}.av-kantei.com" --status publish --max-pages 2 --per-page 20
 
       - name: Verify latest published posts
         if: steps.check.outputs.should_run == 'true'
