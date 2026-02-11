@@ -4,17 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       site:
-        description: '対象サイト (空欄で全サイト)'
+        description: 'Target site (blank = all sites)'
         required: false
         default: ''
       limit:
-        description: '1サイトあたりの投稿数'
+        description: 'Number of posts per site'
         required: false
         default: '5'
-  
-  # スケジュール実行（UTC時間）
+
   schedule:
-    - cron: '30 22 * * *'  # JST 7:30
+    - cron: '30 22 * * *'  # JST 07:30
     - cron: '10 3 * * *'   # JST 12:10
     - cron: '0 13 * * *'   # JST 22:00
     - cron: '10 14 * * *'  # JST 23:10
@@ -24,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -40,7 +39,7 @@ jobs:
           - sd08-jukujo
           - sd09-iyashi
           - sd10-otona
-    
+
     steps:
       - name: Check if site should run
         id: check
@@ -52,56 +51,146 @@ jobs:
           else
             echo "should_run=false" >> $GITHUB_OUTPUT
           fi
-      
+
       - name: Checkout repository
         if: steps.check.outputs.should_run == 'true'
         uses: actions/checkout@v4
-      
+
       - name: Set up Python
         if: steps.check.outputs.should_run == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
-      
+
       - name: Install dependencies
         if: steps.check.outputs.should_run == 'true'
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-      
+
       - name: Set site-specific secrets
         if: steps.check.outputs.should_run == 'true'
         run: |
-          # 共通設定
-          echo "FANZA_API_KEY=${{ secrets.FANZA_API_KEY }}" >> .env
-          echo "FANZA_AFFILIATE_ID=${{ secrets.FANZA_AFFILIATE_ID }}" >> .env
-          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
-          echo "WP_USERNAME=${{ secrets.WP_USERNAME }}" >> .env
-          
-          # サイト別URL
-          echo "WP_BASE_URL=https://${{ matrix.site }}.av-kantei.com" >> .env
-          
-          # サイト別Application Password
+          set -euo pipefail
+
+          FANZA_API_KEY="${{ secrets.FANZA_API_KEY }}"
+          FANZA_AFFILIATE_ID="${{ secrets.FANZA_AFFILIATE_ID }}"
+          OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
+          WP_USERNAME="${{ secrets.WP_USERNAME }}"
+
           case "${{ matrix.site }}" in
-            sd01-chichi)   echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD }}" >> .env ;;
-            sd02-shirouto) echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD_SD02 }}" >> .env ;;
-            sd03-gyaru)    echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD_SD03 }}" >> .env ;;
-            sd04-chijo)    echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD_SD04 }}" >> .env ;;
-            sd05-seiso)    echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD_SD05 }}" >> .env ;;
-            sd06-hitozuma) echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD_SD06 }}" >> .env ;;
-            sd07-oneesan)  echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD_SD07 }}" >> .env ;;
-            sd08-jukujo)   echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD_SD08 }}" >> .env ;;
-            sd09-iyashi)   echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD_SD09 }}" >> .env ;;
-            sd10-otona)    echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD_SD10 }}" >> .env ;;
+            sd01-chichi)   WP_APP_PASSWORD="${{ secrets.WP_APP_PASSWORD }}" ;;
+            sd02-shirouto) WP_APP_PASSWORD="${{ secrets.WP_APP_PASSWORD_SD02 }}" ;;
+            sd03-gyaru)    WP_APP_PASSWORD="${{ secrets.WP_APP_PASSWORD_SD03 }}" ;;
+            sd04-chijo)    WP_APP_PASSWORD="${{ secrets.WP_APP_PASSWORD_SD04 }}" ;;
+            sd05-seiso)    WP_APP_PASSWORD="${{ secrets.WP_APP_PASSWORD_SD05 }}" ;;
+            sd06-hitozuma) WP_APP_PASSWORD="${{ secrets.WP_APP_PASSWORD_SD06 }}" ;;
+            sd07-oneesan)  WP_APP_PASSWORD="${{ secrets.WP_APP_PASSWORD_SD07 }}" ;;
+            sd08-jukujo)   WP_APP_PASSWORD="${{ secrets.WP_APP_PASSWORD_SD08 }}" ;;
+            sd09-iyashi)   WP_APP_PASSWORD="${{ secrets.WP_APP_PASSWORD_SD09 }}" ;;
+            sd10-otona)    WP_APP_PASSWORD="${{ secrets.WP_APP_PASSWORD_SD10 }}" ;;
+            *)
+              echo "Unknown site: ${{ matrix.site }}" >&2
+              exit 1
+              ;;
           esac
-      
+
+          if [ -z "$FANZA_API_KEY" ] || [ -z "$FANZA_AFFILIATE_ID" ] || [ -z "$OPENAI_API_KEY" ] || [ -z "$WP_USERNAME" ] || [ -z "$WP_APP_PASSWORD" ]; then
+            echo "Missing required secrets for site=${{ matrix.site }}." >&2
+            echo "Required: FANZA_API_KEY, FANZA_AFFILIATE_ID, OPENAI_API_KEY, WP_USERNAME, site-specific WP_APP_PASSWORD." >&2
+            exit 1
+          fi
+
+          WP_PASS_RAW_LEN=${#WP_APP_PASSWORD}
+          WP_APP_PASSWORD="$(printf '%s' "$WP_APP_PASSWORD" | tr -d '[:space:]')"
+          WP_PASS_CLEAN_LEN=${#WP_APP_PASSWORD}
+
+          {
+            echo "FANZA_API_KEY=$FANZA_API_KEY"
+            echo "FANZA_AFFILIATE_ID=$FANZA_AFFILIATE_ID"
+            echo "OPENAI_API_KEY=$OPENAI_API_KEY"
+            echo "WP_USERNAME=$WP_USERNAME"
+            echo "WP_BASE_URL=https://${{ matrix.site }}.av-kantei.com"
+            echo "WP_APP_PASSWORD=$WP_APP_PASSWORD"
+          } >> .env
+
+          echo "Using site=${{ matrix.site }}"
+          echo "Username length: ${#WP_USERNAME}"
+          echo "Password length(raw): ${WP_PASS_RAW_LEN}"
+          echo "Password length(clean): ${WP_PASS_CLEAN_LEN}"
+
+      - name: Verify WordPress auth/role
+        if: steps.check.outputs.should_run == 'true'
+        run: |
+          python - << 'PY'
+          import os
+          import requests
+          from dotenv import load_dotenv
+
+          load_dotenv('.env')
+          base = os.getenv('WP_BASE_URL', '').rstrip('/')
+          user = os.getenv('WP_USERNAME', '')
+          app = os.getenv('WP_APP_PASSWORD', '')
+          auth = (user, app)
+
+          me = requests.get(f"{base}/wp-json/wp/v2/users/me", auth=auth, timeout=20)
+          if me.status_code != 200:
+              print('WP auth failed:', me.status_code, me.text[:500])
+              raise SystemExit(1)
+
+          media = requests.post(
+              f"{base}/wp-json/wp/v2/media",
+              auth=auth,
+              headers={'Content-Type': 'image/gif', 'Content-Disposition': 'attachment; filename=probe.gif'},
+              data=b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;',
+              timeout=20,
+          )
+          if media.status_code != 201:
+              print('WP media permission failed:', media.status_code, media.text[:500])
+              raise SystemExit(1)
+
+          mid = media.json().get('id')
+          if mid:
+              requests.delete(f"{base}/wp-json/wp/v2/media/{mid}", params={'force': 'true'}, auth=auth, timeout=20)
+          print('WP auth/role OK')
+          PY
+
       - name: Run FANZA Bot
         if: steps.check.outputs.should_run == 'true'
         run: |
           LIMIT="${{ github.event.inputs.limit }}"
-          python scripts/run_batch.py --subdomain ${{ matrix.site }} --limit ${LIMIT:-5}
-      
+          USE_CDN_IMAGES=true REQUIRE_FEATURED_MEDIA=false python scripts/run_batch.py --subdomain ${{ matrix.site }} --limit ${LIMIT:-5}
+
+      - name: Normalize SD01 posts (existing + newly created)
+        if: steps.check.outputs.should_run == 'true' && matrix.site == 'sd01-chichi'
+        run: |
+          python scripts/normalize_sd01_posts.py --base-url "https://sd01-chichi.av-kantei.com" --status publish --max-pages 3 --per-page 20
+
+      - name: Verify latest published posts
+        if: steps.check.outputs.should_run == 'true'
+        run: |
+          python - << 'PY'
+          import os
+          import requests
+          from dotenv import load_dotenv
+
+          load_dotenv(".env")
+          base = os.getenv("WP_BASE_URL", "").rstrip("/")
+          url = f"{base}/wp-json/wp/v2/posts"
+          resp = requests.get(
+              url,
+              params={"per_page": 3, "orderby": "date", "order": "desc", "_fields": "id,date,slug,link,title"},
+              timeout=20,
+          )
+          resp.raise_for_status()
+          posts = resp.json() or []
+          print(f"Latest published posts on {base}: {len(posts)}")
+          for p in posts:
+              title = (p.get("title") or {}).get("rendered", "")
+              print(f"- id={p.get('id')} date={p.get('date')} slug={p.get('slug')} link={p.get('link')} title={title[:80]}")
+          PY
+
       - name: Commit posted database
         if: steps.check.outputs.should_run == 'true'
         run: |
