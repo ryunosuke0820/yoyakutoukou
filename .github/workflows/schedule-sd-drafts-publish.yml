@@ -79,7 +79,7 @@ jobs:
           FANZA_API_KEY: ${{ secrets.FANZA_API_KEY }}
           FANZA_AFFILIATE_ID: ${{ secrets.FANZA_AFFILIATE_ID }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL || 'gpt-4o-mini' }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL || 'gpt-5.2' }}
           WP_USERNAME: ${{ secrets.WP_USERNAME }}
           WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
           WP_APP_PASSWORD_SD02: ${{ secrets.WP_APP_PASSWORD_SD02 }}
