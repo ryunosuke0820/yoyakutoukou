@@ -3,6 +3,10 @@ name: Publish SD Drafts Now
 on:
   workflow_dispatch:
     inputs:
+      sites:
+        description: "Target sites (comma separated, e.g. sd01-chichi,sd02-shirouto or all)"
+        required: false
+        default: "all"
       dry_run:
         description: "Dry-run only (no WP update)"
         required: false
@@ -57,7 +61,18 @@ jobs:
           {
             echo "WP_BASE_URL=https://av-kantei.com"
             echo "WP_USERNAME=${WP_USERNAME}"
+            echo "WP_USERNAME_SD01=${WP_USERNAME_SD01}"
+            echo "WP_USERNAME_SD02=${WP_USERNAME_SD02}"
+            echo "WP_USERNAME_SD03=${WP_USERNAME_SD03}"
+            echo "WP_USERNAME_SD04=${WP_USERNAME_SD04}"
+            echo "WP_USERNAME_SD05=${WP_USERNAME_SD05}"
+            echo "WP_USERNAME_SD06=${WP_USERNAME_SD06}"
+            echo "WP_USERNAME_SD07=${WP_USERNAME_SD07}"
+            echo "WP_USERNAME_SD08=${WP_USERNAME_SD08}"
+            echo "WP_USERNAME_SD09=${WP_USERNAME_SD09}"
+            echo "WP_USERNAME_SD10=${WP_USERNAME_SD10}"
             echo "WP_APP_PASSWORD=${WP_APP_PASSWORD}"
+            echo "WP_APP_PASSWORD_SD01=${WP_APP_PASSWORD_SD01}"
             echo "WP_APP_PASSWORD_SD02=${WP_APP_PASSWORD_SD02}"
             echo "WP_APP_PASSWORD_SD03=${WP_APP_PASSWORD_SD03}"
             echo "WP_APP_PASSWORD_SD04=${WP_APP_PASSWORD_SD04}"
@@ -73,7 +88,18 @@ jobs:
           } > .env
         env:
           WP_USERNAME: ${{ secrets.WP_USERNAME }}
+          WP_USERNAME_SD01: ${{ secrets.WP_USERNAME_SD01 }}
+          WP_USERNAME_SD02: ${{ secrets.WP_USERNAME_SD02 }}
+          WP_USERNAME_SD03: ${{ secrets.WP_USERNAME_SD03 }}
+          WP_USERNAME_SD04: ${{ secrets.WP_USERNAME_SD04 }}
+          WP_USERNAME_SD05: ${{ secrets.WP_USERNAME_SD05 }}
+          WP_USERNAME_SD06: ${{ secrets.WP_USERNAME_SD06 }}
+          WP_USERNAME_SD07: ${{ secrets.WP_USERNAME_SD07 }}
+          WP_USERNAME_SD08: ${{ secrets.WP_USERNAME_SD08 }}
+          WP_USERNAME_SD09: ${{ secrets.WP_USERNAME_SD09 }}
+          WP_USERNAME_SD10: ${{ secrets.WP_USERNAME_SD10 }}
           WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          WP_APP_PASSWORD_SD01: ${{ secrets.WP_APP_PASSWORD_SD01 }}
           WP_APP_PASSWORD_SD02: ${{ secrets.WP_APP_PASSWORD_SD02 }}
           WP_APP_PASSWORD_SD03: ${{ secrets.WP_APP_PASSWORD_SD03 }}
           WP_APP_PASSWORD_SD04: ${{ secrets.WP_APP_PASSWORD_SD04 }}
@@ -91,13 +117,15 @@ jobs:
           DRY_RUN="${{ github.event.inputs.dry_run }}"
           RESET_PROGRESS="${{ github.event.inputs.reset_progress }}"
           MAX_ITEMS="${{ github.event.inputs.max_items }}"
+          SITES="${{ github.event.inputs.sites }}"
 
           # Defaults for scheduled runs (workflow_dispatch inputs are empty on cron)
           if [ -z "${MAX_ITEMS}" ]; then MAX_ITEMS="10"; fi
           if [ -z "${DRY_RUN}" ]; then DRY_RUN="false"; fi
           if [ -z "${RESET_PROGRESS}" ]; then RESET_PROGRESS="false"; fi
+          if [ -z "${SITES}" ]; then SITES="all"; fi
 
-          CMD="python scripts/publish_sd_drafts_now.py --max-items ${MAX_ITEMS} --output-dir data/publish_sd_drafts"
+          CMD="python scripts/publish_sd_drafts_now.py --sites ${SITES} --max-items ${MAX_ITEMS} --output-dir data/publish_sd_drafts"
           if [ "${DRY_RUN}" = "true" ]; then CMD="${CMD} --dry-run"; fi
           if [ "${RESET_PROGRESS}" = "true" ]; then CMD="${CMD} --reset-progress"; fi
 

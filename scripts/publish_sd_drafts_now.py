@@ -275,27 +275,43 @@ def main() -> None:
     processed_ids = set(int(v) for v in progress.get("processed_post_ids", []))
     site_clients: dict[str, WPClient] = {}
     site_queues: dict[str, deque[QueueItem]] = {}
+    init_entries: list[dict[str, Any]] = []
 
     for site_id in selected_sites:
-        user, pw = _site_credentials(config, site_id)
-        wp_client = WPClient(f"https://{site_id}.av-kantei.com", user, pw)
-        site_clients[site_id] = wp_client
-        site_queues[site_id] = _build_site_queue(
-            wp_client,
-            site_id=site_id,
-            status_filter=status_filter,
-            max_pages=max(1, args.max_pages),
-            processed_ids=processed_ids,
-        )
-        logger.info("[%s] queued drafts: %s", site_id, len(site_queues[site_id]))
+        try:
+            user, pw = _site_credentials(config, site_id)
+            wp_client = WPClient(f"https://{site_id}.av-kantei.com", user, pw)
+            site_clients[site_id] = wp_client
+            site_queues[site_id] = _build_site_queue(
+                wp_client,
+                site_id=site_id,
+                status_filter=status_filter,
+                max_pages=max(1, args.max_pages),
+                processed_ids=processed_ids,
+            )
+            logger.info("[%s] queued drafts: %s", site_id, len(site_queues[site_id]))
+        except Exception as exc:  # noqa: BLE001
+            logger.error("[%s] queue init failed: %s", site_id, exc)
+            init_entries.append(
+                {
+                    "site": site_id,
+                    "post_id": 0,
+                    "slug": "",
+                    "url_before": "",
+                    "status_before": "",
+                    "action": "failed",
+                    "reason": f"queue_init_failed:{exc}",
+                    "updated_at": _now_utc_iso(),
+                }
+            )
 
     cycle_sites = deque([site for site in selected_sites if site_queues[site]])
-    if not cycle_sites:
+    if not cycle_sites and not init_entries:
         logger.info("no target drafts found")
         return
 
     max_items = int(args.max_items or 0)
-    run_entries: list[dict[str, Any]] = []
+    run_entries: list[dict[str, Any]] = list(init_entries)
     assigned = 0
 
     while cycle_sites:
