@@ -24,8 +24,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # 共通ログイン情報
-WP_USERNAME = "moco"
-WP_APP_PASSWORD = "LS3q H0qN 6PNB dTHN W07W iHh3"
+def _required_env(name: str) -> str:
+    value = os.getenv(name, "").strip()
+    if not value:
+        raise RuntimeError(f"Missing required env var: {name}")
+    return value
 
 def delete_all_posts_from_site(site: SiteConfig):
     base_url = f"https://{site.subdomain}.av-kantei.com"
@@ -33,8 +36,8 @@ def delete_all_posts_from_site(site: SiteConfig):
     
     wp_client = WPClient(
         base_url=base_url,
-        username=WP_USERNAME,
-        app_password=WP_APP_PASSWORD,
+        username=_required_env("WP_USERNAME"),
+        app_password=_required_env("WP_APP_PASSWORD"),
     )
     
     deleted_count = 0

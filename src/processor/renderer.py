@@ -174,7 +174,7 @@ class Renderer:
   });
   document.querySelectorAll('[class*=\"author\"], [class*=\"profile\"], [class*=\"follow\"]').forEach((el) => {
     const text = (el.textContent || '').trim();
-    if (text.includes('をフォローする') || text.toLowerCase().includes('follow') || text.includes('moco0426')) {
+    if (text.includes('をフォローする') || text.toLowerCase().includes('follow')) {
       el.remove();
     }
   });
@@ -427,6 +427,9 @@ class Renderer:
             normalized_site_id,
             ("\u26a0 \u4f5c\u54c1\u306e\u50be\u5411\u304c\u523a\u3055\u308b\u4eba\u5411\u3051", "\u597d\u307f\u3068\u9055\u3046\u5834\u5408\u306f\u30ea\u30f3\u30af\u5148\u306e\u8a73\u7d30\u60c5\u5831\u3082\u78ba\u8a8d\u3057\u3066\u304f\u3060\u3055\u3044\u3002"),
         )
+        if normalized_site_id == "sd01-chichi":
+            callout_title = "⚠ 巨乳が大好きな人向け"
+            callout_body = "ボリューム感と密着感を重視して選びたいときに相性の良い一本です。"
         html = html.replace("{HERO_CALLOUT_TITLE}", callout_title)
         html = html.replace("{HERO_CALLOUT_BODY}", callout_body)
 

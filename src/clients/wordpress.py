@@ -544,6 +544,13 @@ class WPClient:
             tags=tags,
             fanza_product_id=fanza_product_id
         )
+        logger.info(
+            "WP投稿公開完了: id=%s slug=%s link=%s status=%s",
+            result.get("id"),
+            result.get("slug"),
+            result.get("link"),
+            result.get("status"),
+        )
         return result["id"]
     
     def upload_media(

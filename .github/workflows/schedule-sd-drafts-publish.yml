@@ -49,16 +49,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -z "${FANZA_API_KEY:-}" ] || [ -z "${FANZA_AFFILIATE_ID:-}" ] || [ -z "${OPENAI_API_KEY:-}" ] || [ -z "${WP_USERNAME:-}" ]; then
-            echo "Missing required secrets: FANZA_API_KEY, FANZA_AFFILIATE_ID, OPENAI_API_KEY, WP_USERNAME" >&2
+          if [ -z "${WP_USERNAME:-}" ] || [ -z "${WP_APP_PASSWORD:-}" ]; then
+            echo "Missing required secrets: WP_USERNAME, WP_APP_PASSWORD" >&2
             exit 1
           fi
 
           {
-            echo "FANZA_API_KEY=${FANZA_API_KEY}"
-            echo "FANZA_AFFILIATE_ID=${FANZA_AFFILIATE_ID}"
-            echo "OPENAI_API_KEY=${OPENAI_API_KEY}"
-            echo "OPENAI_MODEL=${OPENAI_MODEL}"
             echo "WP_BASE_URL=https://av-kantei.com"
             echo "WP_USERNAME=${WP_USERNAME}"
             echo "WP_APP_PASSWORD=${WP_APP_PASSWORD}"
@@ -76,10 +72,6 @@ jobs:
             echo "POST_STATUS=draft"
           } > .env
         env:
-          FANZA_API_KEY: ${{ secrets.FANZA_API_KEY }}
-          FANZA_AFFILIATE_ID: ${{ secrets.FANZA_AFFILIATE_ID }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL || 'gpt-5.2' }}
           WP_USERNAME: ${{ secrets.WP_USERNAME }}
           WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
           WP_APP_PASSWORD_SD02: ${{ secrets.WP_APP_PASSWORD_SD02 }}

@@ -55,9 +55,11 @@ SITES = [
     ),
 ]
 
-# WordPress???????.env???
-WP_USERNAME = "moco"
-WP_APP_PASSWORD = "LS3q H0qN 6PNB dTHN W07W iHh3"
+def _required_env(name: str) -> str:
+    value = os.getenv(name, "").strip()
+    if not value:
+        raise RuntimeError(f"Missing required env var: {name}")
+    return value
 
 def get_site_config(subdomain: str) -> SiteConfig | None:
     """????????????????"""
@@ -71,7 +73,9 @@ def update_site_settings(site: SiteConfig):
     api_url = f"{base_url}/wp-json/wp/v2/settings"
 
     # Basic??????
-    credentials = f"{WP_USERNAME}:{WP_APP_PASSWORD}"
+    wp_username = _required_env("WP_USERNAME")
+    wp_app_password = _required_env("WP_APP_PASSWORD")
+    credentials = f"{wp_username}:{wp_app_password}"
     encoded = base64.b64encode(credentials.encode()).decode()
     headers = {
         "Authorization": f"Basic {encoded}",

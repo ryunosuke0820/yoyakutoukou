@@ -6,6 +6,7 @@ import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Any, Optional
+from urllib.parse import urlparse
 
 from src.core.models import Product, AIResponse
 from src.core.config import Config
@@ -56,12 +57,12 @@ class PosterService:
                 if self.wp_client.check_post_exists_by_fanza_id(product_id):
                     logger.info(f"スキップ: すでに同じFANZA IDの記事が存在します (WP側): {product_id}")
                     # ローカルDB側も成功扱いとして記録（次回以降is_postedで弾けるようにする）
-                    self.dedupe_store.record_success(product_id, status="drafted")
+                    self.dedupe_store.record_success(product_id, status="published")
                     return "skip"
                     
                 if self.wp_client.check_post_exists_by_slug(product_id):
                     logger.info(f"スキップ: すでにWordPress上に記事が存在します (slug match): {product_id}")
-                    self.dedupe_store.record_success(product_id, status="drafted")
+                    self.dedupe_store.record_success(product_id, status="published")
                     return "skip"
 
             # シーン用の画像URLを決定
@@ -95,7 +96,7 @@ class PosterService:
             featured_media_id = None
             package_media_id = None
             use_cdn_images = os.environ.get("USE_CDN_IMAGES", "").lower() == "true"
-            require_featured_media = os.environ.get("REQUIRE_FEATURED_MEDIA", "true").lower() != "false"
+            require_featured_media = os.environ.get("REQUIRE_FEATURED_MEDIA", "false").lower() == "true"
             
             if use_cdn_images:
                 logger.info("USE_CDN_IMAGES=true: 画像アップロードをスキップしてCDN URLを直接使用")
@@ -126,6 +127,8 @@ class PosterService:
                     except ImagePlaceholderError as e:
                         logger.warning(f"画像がまだ準備されていません。スキップ: {e}")
                         return "skip"
+                    except Exception as e:
+                        logger.warning(f"パッケージ画像アップロード失敗。CDN画像で継続します: {e}")
                 
                 # 画像アップロードの並列化
                 new_sample_urls = [None] * len(scene_image_urls[:3])
@@ -189,6 +192,11 @@ class PosterService:
             site_id = "default"
             if site_info and hasattr(site_info, "subdomain"):
                 site_id = site_info.subdomain
+            else:
+                # main site run should not fall back to dark default theme.
+                host = urlparse(self.config.wp_base_url).netloc.lower()
+                if host in {"av-kantei.com", "www.av-kantei.com"}:
+                    site_id = "main"
 
             category_ids: list[int] = []
             tag_ids: list[int] = []
@@ -218,6 +226,11 @@ class PosterService:
                         selected_big_cat = big_cat
                         break
 
+            render_site_id = site_id
+            # Main-site breast-focused posts should use the pink visual theme.
+            if site_id in {"main", "default"} and selected_big_cat == "巨乳・爆乳":
+                render_site_id = "sd01-chichi"
+
             if not dry_run:
                 category_ids, tag_ids = self.wp_client.prepare_taxonomies(
                     genres=[selected_big_cat],
@@ -232,7 +245,7 @@ class PosterService:
 
             # related posts scoring
             try:
-                site_decor = self.renderer._get_site_decor(site_id)
+                site_decor = self.renderer._get_site_decor(render_site_id)
                 priority = site_decor.get("related", {}).get("priority")
                 related_posts = self.wp_client.find_related_posts(
                     priority=priority,
@@ -247,7 +260,7 @@ class PosterService:
             content_html = self.renderer.render_post_content(
                 item,
                 ai_response,
-                site_id=site_id,
+                site_id=render_site_id,
                 related_posts=related_posts,
             )
 
@@ -303,7 +316,7 @@ body {{ max-width: 800px; margin: 0 auto; padding: 20px; font-family: sans-serif
                 fanza_product_id=product_id
             )
             
-            self.dedupe_store.record_success(product_id, wp_post_id=post_id, status="drafted")
+            self.dedupe_store.record_success(product_id, wp_post_id=post_id, status="published")
             return "success"
                 
         except Exception as e:
