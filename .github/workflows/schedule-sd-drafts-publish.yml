@@ -1,0 +1,146 @@
+name: Schedule SD Drafts Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run only (no WP update)"
+        required: false
+        default: "false"
+      reset_progress:
+        description: "Reset progress before run"
+        required: false
+        default: "false"
+      max_items:
+        description: "How many posts to schedule in this run (0 = all)"
+        required: false
+        default: "10"
+      interval_minutes:
+        description: "Slot interval minutes"
+        required: false
+        default: "12"
+      start_jst:
+        description: "Optional start datetime JST (ISO8601)"
+        required: false
+        default: ""
+
+  schedule:
+    # every 2 hours
+    - cron: "0 */2 * * *"
+
+concurrency:
+  group: schedule-sd-drafts-publish
+  cancel-in-progress: false
+
+jobs:
+  schedule:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Prepare .env for scheduler
+        run: |
+          set -euo pipefail
+
+          if [ -z "${FANZA_API_KEY:-}" ] || [ -z "${FANZA_AFFILIATE_ID:-}" ] || [ -z "${OPENAI_API_KEY:-}" ] || [ -z "${WP_USERNAME:-}" ]; then
+            echo "Missing required secrets: FANZA_API_KEY, FANZA_AFFILIATE_ID, OPENAI_API_KEY, WP_USERNAME" >&2
+            exit 1
+          fi
+
+          {
+            echo "FANZA_API_KEY=${FANZA_API_KEY}"
+            echo "FANZA_AFFILIATE_ID=${FANZA_AFFILIATE_ID}"
+            echo "OPENAI_API_KEY=${OPENAI_API_KEY}"
+            echo "OPENAI_MODEL=${OPENAI_MODEL}"
+            echo "WP_BASE_URL=https://av-kantei.com"
+            echo "WP_USERNAME=${WP_USERNAME}"
+            echo "WP_APP_PASSWORD=${WP_APP_PASSWORD}"
+            echo "WP_APP_PASSWORD_SD02=${WP_APP_PASSWORD_SD02}"
+            echo "WP_APP_PASSWORD_SD03=${WP_APP_PASSWORD_SD03}"
+            echo "WP_APP_PASSWORD_SD04=${WP_APP_PASSWORD_SD04}"
+            echo "WP_APP_PASSWORD_SD05=${WP_APP_PASSWORD_SD05}"
+            echo "WP_APP_PASSWORD_SD06=${WP_APP_PASSWORD_SD06}"
+            echo "WP_APP_PASSWORD_SD07=${WP_APP_PASSWORD_SD07}"
+            echo "WP_APP_PASSWORD_SD08=${WP_APP_PASSWORD_SD08}"
+            echo "WP_APP_PASSWORD_SD09=${WP_APP_PASSWORD_SD09}"
+            echo "WP_APP_PASSWORD_SD10=${WP_APP_PASSWORD_SD10}"
+            echo "MIN_CHARS=1100"
+            echo "MAX_CHARS=1300"
+            echo "POST_STATUS=draft"
+          } > .env
+        env:
+          FANZA_API_KEY: ${{ secrets.FANZA_API_KEY }}
+          FANZA_AFFILIATE_ID: ${{ secrets.FANZA_AFFILIATE_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL || 'gpt-4o-mini' }}
+          WP_USERNAME: ${{ secrets.WP_USERNAME }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          WP_APP_PASSWORD_SD02: ${{ secrets.WP_APP_PASSWORD_SD02 }}
+          WP_APP_PASSWORD_SD03: ${{ secrets.WP_APP_PASSWORD_SD03 }}
+          WP_APP_PASSWORD_SD04: ${{ secrets.WP_APP_PASSWORD_SD04 }}
+          WP_APP_PASSWORD_SD05: ${{ secrets.WP_APP_PASSWORD_SD05 }}
+          WP_APP_PASSWORD_SD06: ${{ secrets.WP_APP_PASSWORD_SD06 }}
+          WP_APP_PASSWORD_SD07: ${{ secrets.WP_APP_PASSWORD_SD07 }}
+          WP_APP_PASSWORD_SD08: ${{ secrets.WP_APP_PASSWORD_SD08 }}
+          WP_APP_PASSWORD_SD09: ${{ secrets.WP_APP_PASSWORD_SD09 }}
+          WP_APP_PASSWORD_SD10: ${{ secrets.WP_APP_PASSWORD_SD10 }}
+
+      - name: Run scheduler
+        run: |
+          set -euo pipefail
+
+          DRY_RUN="${{ github.event.inputs.dry_run }}"
+          RESET_PROGRESS="${{ github.event.inputs.reset_progress }}"
+          MAX_ITEMS="${{ github.event.inputs.max_items }}"
+          INTERVAL_MINUTES="${{ github.event.inputs.interval_minutes }}"
+          START_JST="${{ github.event.inputs.start_jst }}"
+
+          # Defaults for scheduled runs (workflow_dispatch inputs are empty on cron)
+          if [ -z "${MAX_ITEMS}" ]; then MAX_ITEMS="10"; fi
+          if [ -z "${INTERVAL_MINUTES}" ]; then INTERVAL_MINUTES="12"; fi
+          if [ -z "${DRY_RUN}" ]; then DRY_RUN="false"; fi
+          if [ -z "${RESET_PROGRESS}" ]; then RESET_PROGRESS="false"; fi
+
+          CMD="python scripts/schedule_sd_drafts_publish.py --interval-minutes ${INTERVAL_MINUTES} --max-items ${MAX_ITEMS} --output-dir data/schedule_publish_sd"
+          if [ "${DRY_RUN}" = "true" ]; then CMD="${CMD} --dry-run"; fi
+          if [ "${RESET_PROGRESS}" = "true" ]; then CMD="${CMD} --reset-progress"; fi
+          if [ -n "${START_JST}" ]; then CMD="${CMD} --start-jst ${START_JST}"; fi
+
+          echo "Running: ${CMD}"
+          eval "${CMD}"
+
+      - name: Upload scheduler outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schedule-publish-sd
+          path: data/schedule_publish_sd/
+          if-no-files-found: ignore
+
+      - name: Commit progress/manifest
+        if: always()
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase || true
+          git add data/schedule_publish_sd/progress.json data/schedule_publish_sd/manifest.json .env || true
+          git restore --staged .env || true
+          git checkout -- .env || true
+          git diff --staged --quiet || git commit -m "chore: update schedule publish progress"
+          git push || true
