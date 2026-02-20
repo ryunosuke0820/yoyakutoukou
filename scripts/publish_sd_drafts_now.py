@@ -307,7 +307,7 @@ def main() -> None:
                 }
             )
 
-    cycle_sites = deque([site for site in selected_sites if site_queues[site]])
+    cycle_sites = deque([site for site in selected_sites if site_queues.get(site)])
     if not cycle_sites and not init_entries:
         logger.info("no target drafts found")
         return
