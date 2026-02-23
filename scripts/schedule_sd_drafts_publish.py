@@ -16,11 +16,12 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
-from src.core.config import get_config
+from dotenv import load_dotenv
 from src.clients.wordpress import WPClient
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
+load_dotenv(ROOT / ".env")
 
 JST = timezone(timedelta(hours=9))
 TARGET_SITES = [
@@ -44,6 +45,21 @@ class QueueItem:
     slug: str
     url_before: str
     status_before: str
+
+
+@dataclass
+class ScheduleConfig:
+    base_dir: Path
+    wp_username: str
+    wp_app_password: str
+
+
+def _load_schedule_config() -> ScheduleConfig:
+    return ScheduleConfig(
+        base_dir=ROOT,
+        wp_username=(os.getenv("WP_USERNAME") or "").strip(),
+        wp_app_password=(os.getenv("WP_APP_PASSWORD") or "").strip(),
+    )
 
 
 def _site_env_key(subdomain: str, prefix: str) -> str:
@@ -307,7 +323,7 @@ def main() -> None:
     selected_sites = _parse_sites(args.sites)
     status_filter = (args.status_filter or "draft").strip().lower()
 
-    config = get_config()
+    config = _load_schedule_config()
     output_dir = (config.base_dir / args.output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
