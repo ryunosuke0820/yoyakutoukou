@@ -179,7 +179,12 @@ class WPClient:
                 response = self._request("GET", "posts", params=params)
 
             if response.status_code == 400:
-                break
+                body = response.text or ""
+                # Page overflow on pagination is expected and should stop iteration quietly.
+                if "rest_post_invalid_page_number" in body:
+                    break
+                # Other 400s (e.g. forbidden draft status due auth mismatch) should surface.
+                response.raise_for_status()
             response.raise_for_status()
             posts = response.json()
             if not posts or not isinstance(posts, list):
