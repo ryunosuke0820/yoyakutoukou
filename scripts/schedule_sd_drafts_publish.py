@@ -427,7 +427,7 @@ def main() -> None:
                     row["action"] = "skipped"
                     row["reason"] = f"status_changed_to_{latest_status}"
                 else:
-                    wp.update_post(
+                    updated = wp.update_post(
                         item.post_id,
                         {
                             "status": "future",
@@ -435,6 +435,10 @@ def main() -> None:
                             "date_gmt": scheduled_gmt,
                         },
                     )
+                    if updated.get("status") not in ("future", "publish"):
+                        raise ValueError(
+                            f"ステータス更新失敗: id={item.post_id} status={updated.get('status')!r}"
+                        )
                     row["action"] = "updated"
                     row["reason"] = ""
             except Exception as exc:  # noqa: BLE001

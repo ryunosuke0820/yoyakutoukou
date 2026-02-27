@@ -361,7 +361,11 @@ def main() -> None:
                     row["action"] = "skipped"
                     row["reason"] = f"status_changed_to_{latest_status}"
                 else:
-                    wp.update_post(item.post_id, {"status": "publish"})
+                    updated = wp.update_post(item.post_id, {"status": "publish"})
+                    if updated.get("status") != "publish":
+                        raise ValueError(
+                            f"ステータス更新失敗: id={item.post_id} status={updated.get('status')!r}"
+                        )
                     row["action"] = "updated"
                     row["reason"] = ""
             except Exception as exc:  # noqa: BLE001
